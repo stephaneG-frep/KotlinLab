@@ -16,6 +16,9 @@ class ProfileState {
     this.textScale = 1,
     this.favoriteLessonIds = const {},
     this.completedLessonIds = const {'intro', 'hello'},
+    this.completedExerciseIds = const {},
+    this.quizAttempts = 0,
+    this.quizCorrectAnswers = 0,
   });
 
   final String name;
@@ -29,6 +32,9 @@ class ProfileState {
   final double textScale;
   final Set<String> favoriteLessonIds;
   final Set<String> completedLessonIds;
+  final Set<String> completedExerciseIds;
+  final int quizAttempts;
+  final int quizCorrectAnswers;
 
   ProfileState copyWith({
     String? name,
@@ -42,6 +48,9 @@ class ProfileState {
     double? textScale,
     Set<String>? favoriteLessonIds,
     Set<String>? completedLessonIds,
+    Set<String>? completedExerciseIds,
+    int? quizAttempts,
+    int? quizCorrectAnswers,
   }) => ProfileState(
     name: name ?? this.name,
     xp: xp ?? this.xp,
@@ -54,6 +63,9 @@ class ProfileState {
     textScale: textScale ?? this.textScale,
     favoriteLessonIds: favoriteLessonIds ?? this.favoriteLessonIds,
     completedLessonIds: completedLessonIds ?? this.completedLessonIds,
+    completedExerciseIds: completedExerciseIds ?? this.completedExerciseIds,
+    quizAttempts: quizAttempts ?? this.quizAttempts,
+    quizCorrectAnswers: quizCorrectAnswers ?? this.quizCorrectAnswers,
   );
 }
 
@@ -80,6 +92,11 @@ class ProfileController extends Notifier<ProfileState> {
       _box.get('completedLessonIds', defaultValue: <String>['intro', 'hello'])
           as List,
     ),
+    completedExerciseIds: Set<String>.from(
+      _box.get('completedExerciseIds', defaultValue: <String>[]) as List,
+    ),
+    quizAttempts: _box.get('quizAttempts', defaultValue: 0) as int,
+    quizCorrectAnswers: _box.get('quizCorrectAnswers', defaultValue: 0) as int,
   );
 
   void toggleTheme(bool dark) {
@@ -124,6 +141,27 @@ class ProfileController extends Notifier<ProfileState> {
         : favorites.add(lessonId);
     state = state.copyWith(favoriteLessonIds: favorites);
     _box.put('favoriteLessonIds', favorites.toList());
+  }
+
+  bool submitExercise(String exerciseId, int xp, {required bool correct}) {
+    final alreadyCompleted = state.completedExerciseIds.contains(exerciseId);
+    final completed = {...state.completedExerciseIds};
+    if (correct) completed.add(exerciseId);
+    final reward = correct && !alreadyCompleted ? xp : 0;
+
+    state = state.copyWith(
+      xp: state.xp + reward,
+      completedExerciseIds: completed,
+      quizAttempts: state.quizAttempts + 1,
+      quizCorrectAnswers: state.quizCorrectAnswers + (correct ? 1 : 0),
+    );
+    _box.putAll({
+      'xp': state.xp,
+      'completedExerciseIds': completed.toList(),
+      'quizAttempts': state.quizAttempts,
+      'quizCorrectAnswers': state.quizCorrectAnswers,
+    });
+    return reward > 0;
   }
 }
 

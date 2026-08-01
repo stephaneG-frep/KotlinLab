@@ -70,6 +70,15 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 12),
                 const _BadgeGrid(),
                 const SizedBox(height: 28),
+                SectionHeader(
+                  title: 'Performance aux quiz',
+                  action: profile.quizAttempts == 0
+                      ? 'Pas encore tenté'
+                      : '${((profile.quizCorrectAnswers / profile.quizAttempts) * 100).round()} %',
+                ),
+                const SizedBox(height: 12),
+                _QuizStats(profile: profile),
+                const SizedBox(height: 28),
                 const SectionHeader(title: 'Ta progression'),
                 const SizedBox(height: 12),
                 const _ProgressList(),
@@ -194,6 +203,71 @@ class _ProfileHero extends StatelessWidget {
         ],
       ),
     ),
+  );
+}
+
+class _QuizStats extends StatelessWidget {
+  const _QuizStats({required this.profile});
+
+  final ProfileState profile;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(18),
+      child: Row(
+        children: [
+          Expanded(
+            child: _QuizMetric(
+              value: '${profile.quizAttempts}',
+              label: 'Réponses',
+              color: AppColors.primary,
+            ),
+          ),
+          Expanded(
+            child: _QuizMetric(
+              value: '${profile.quizCorrectAnswers}',
+              label: 'Correctes',
+              color: AppColors.success,
+            ),
+          ),
+          Expanded(
+            child: _QuizMetric(
+              value: '${profile.completedExerciseIds.length}',
+              label: 'Validés',
+              color: AppColors.secondary,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _QuizMetric extends StatelessWidget {
+  const _QuizMetric({
+    required this.value,
+    required this.label,
+    required this.color,
+  });
+
+  final String value;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      Text(
+        value,
+        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+      const SizedBox(height: 3),
+      Text(label, style: Theme.of(context).textTheme.bodySmall),
+    ],
   );
 }
 

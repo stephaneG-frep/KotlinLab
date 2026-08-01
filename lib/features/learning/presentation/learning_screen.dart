@@ -1,25 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/kit.dart';
+import '../../profile/presentation/profile_controller.dart';
 import '../data/learning_catalog.dart';
 import '../domain/learning_models.dart';
 
-class LearningScreen extends StatefulWidget {
+class LearningScreen extends ConsumerStatefulWidget {
   const LearningScreen({super.key});
 
   @override
-  State<LearningScreen> createState() => _LearningScreenState();
+  ConsumerState<LearningScreen> createState() => _LearningScreenState();
 }
 
-class _LearningScreenState extends State<LearningScreen> {
+class _LearningScreenState extends ConsumerState<LearningScreen> {
   String selected = 'beginner';
 
   @override
   Widget build(BuildContext context) {
     final path = learningPaths.firstWhere((item) => item.id == selected);
+    final completedIds = ref
+        .watch(profileControllerProvider)
+        .completedLessonIds;
+    final pathProgress = path.lessons.isEmpty
+        ? 0.0
+        : path.lessons
+                  .where((lesson) => completedIds.contains(lesson.id))
+                  .length /
+              path.lessons.length;
     return ScreenBody(
       child: CustomScrollView(
         slivers: [
@@ -64,7 +75,7 @@ class _LearningScreenState extends State<LearningScreen> {
                     ),
                   ),
                   const SizedBox(height: 22),
-                  _PathHero(path: path),
+                  _PathHero(path: path, progress: pathProgress),
                   const SizedBox(height: 26),
                   Row(
                     children: [
@@ -94,6 +105,10 @@ class _LearningScreenState extends State<LearningScreen> {
                 lesson: path.lessons[index],
                 number: index + 1,
                 color: path.color,
+                completed: completedIds.contains(path.lessons[index].id),
+                unlocked:
+                    index == 0 ||
+                    completedIds.contains(path.lessons[index - 1].id),
               ).animate().fadeIn(delay: (index * 60).ms).slideX(begin: .05),
             ),
           ),
@@ -104,8 +119,9 @@ class _LearningScreenState extends State<LearningScreen> {
 }
 
 class _PathHero extends StatelessWidget {
-  const _PathHero({required this.path});
+  const _PathHero({required this.path, required this.progress});
   final LearningPath path;
+  final double progress;
   @override
   Widget build(BuildContext context) => AnimatedContainer(
     duration: 300.ms,
@@ -150,10 +166,10 @@ class _PathHero extends StatelessWidget {
               style: const TextStyle(color: Color(0xDDFFFFFF)),
             ),
             const SizedBox(height: 20),
-            ProgressBar(value: path.progress, color: Colors.white, height: 8),
+            ProgressBar(value: progress, color: Colors.white, height: 8),
             const SizedBox(height: 8),
             Text(
-              '${(path.progress * 100).round()} % terminé',
+              '${(progress * 100).round()} % terminé',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 12,
@@ -172,15 +188,18 @@ class _LessonTile extends StatelessWidget {
     required this.lesson,
     required this.number,
     required this.color,
+    required this.completed,
+    required this.unlocked,
   });
   final Lesson lesson;
   final int number;
   final Color color;
+  final bool completed;
+  final bool unlocked;
 
   @override
   Widget build(BuildContext context) {
-    final locked = lesson.status == LessonStatus.locked;
-    final completed = lesson.status == LessonStatus.completed;
+    final locked = !unlocked;
     return Card(
       child: InkWell(
         onTap: locked ? null : () => context.push('/lesson/${lesson.id}'),

@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/kit.dart';
 import '../../learning/data/learning_catalog.dart';
 import '../../learning/domain/learning_models.dart';
+import '../../profile/presentation/profile_controller.dart';
 
-class ExercisesScreen extends StatefulWidget {
+class ExercisesScreen extends ConsumerStatefulWidget {
   const ExercisesScreen({super.key});
   @override
-  State<ExercisesScreen> createState() => _ExercisesScreenState();
+  ConsumerState<ExercisesScreen> createState() => _ExercisesScreenState();
 }
 
-class _ExercisesScreenState extends State<ExercisesScreen> {
+class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
   String filter = 'Tous';
   static const filters = ['Tous', 'Facile', 'Moyen', 'Difficile'];
 
@@ -21,6 +23,7 @@ class _ExercisesScreenState extends State<ExercisesScreen> {
     final visible = filter == 'Tous'
         ? exercises
         : exercises.where((item) => item.difficulty == filter).toList();
+    final progress = ref.watch(profileControllerProvider);
     return ScreenBody(
       child: CustomScrollView(
         slivers: [
@@ -39,16 +42,16 @@ class _ExercisesScreenState extends State<ExercisesScreen> {
                   color: AppColors.accent.withValues(alpha: .17),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.bolt_rounded,
                       color: Color(0xFFE09B00),
                       size: 18,
                     ),
                     Text(
-                      ' 1 240 XP',
-                      style: TextStyle(fontWeight: FontWeight.w800),
+                      ' ${progress.xp} XP',
+                      style: const TextStyle(fontWeight: FontWeight.w800),
                     ),
                   ],
                 ),
@@ -97,6 +100,9 @@ class _ExercisesScreenState extends State<ExercisesScreen> {
               itemCount: visible.length,
               itemBuilder: (_, i) => _ExerciseCard(
                 item: visible[i],
+                completed: progress.completedExerciseIds.contains(
+                  visible[i].id,
+                ),
                 onTap: () => _showExercise(context, visible[i]),
               ).animate().fadeIn(delay: (i * 60).ms),
             ),
@@ -186,9 +192,14 @@ class _QuizHero extends StatelessWidget {
 }
 
 class _ExerciseCard extends StatelessWidget {
-  const _ExerciseCard({required this.item, required this.onTap});
+  const _ExerciseCard({
+    required this.item,
+    required this.onTap,
+    required this.completed,
+  });
   final ExerciseItem item;
   final VoidCallback onTap;
+  final bool completed;
   @override
   Widget build(BuildContext context) => Card(
     child: InkWell(
@@ -225,16 +236,19 @@ class _ExerciseCard extends StatelessWidget {
                 ],
               ),
             ),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.bolt_rounded, color: AppColors.accent),
-                Text(
-                  '+${item.xp}',
-                  style: const TextStyle(fontWeight: FontWeight.w800),
-                ),
-              ],
-            ),
+            if (completed)
+              const Icon(Icons.check_circle_rounded, color: AppColors.success)
+            else
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.bolt_rounded, color: AppColors.accent),
+                  Text(
+                    '+${item.xp}',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ],
+              ),
           ],
         ),
       ),
@@ -242,16 +256,17 @@ class _ExerciseCard extends StatelessWidget {
   );
 }
 
-class _ExerciseSheet extends StatefulWidget {
+class _ExerciseSheet extends ConsumerStatefulWidget {
   const _ExerciseSheet({required this.item});
   final ExerciseItem item;
   @override
-  State<_ExerciseSheet> createState() => _ExerciseSheetState();
+  ConsumerState<_ExerciseSheet> createState() => _ExerciseSheetState();
 }
 
-class _ExerciseSheetState extends State<_ExerciseSheet> {
+class _ExerciseSheetState extends ConsumerState<_ExerciseSheet> {
   int? selected;
   bool checked = false;
+  bool rewarded = false;
   static const choices = [
     'Bonjour Kotlin',
     'Hello Kotlin',
@@ -342,19 +357,33 @@ println("Hello $name")''',
               ),
               child: Text(
                 selected == 1
-                    ? 'Excellent ! L’interpolation insère la valeur de name dans la chaîne.'
+                    ? rewarded
+                          ? 'Excellent ! +${widget.item.xp} XP. L’interpolation insère la valeur de name.'
+                          : 'Bonne réponse ! Cet exercice était déjà validé.'
                     : r'Pas tout à fait. Avec $name, Kotlin insère directement la valeur « Kotlin ».',
               ),
             ),
           const SizedBox(height: 14),
           FilledButton(
-            onPressed: selected == null
+            onPressed: selected == null || checked
                 ? null
-                : () => setState(() => checked = true),
+                : () {
+                    final gained = ref
+                        .read(profileControllerProvider.notifier)
+                        .submitExercise(
+                          widget.item.id,
+                          widget.item.xp,
+                          correct: selected == 1,
+                        );
+                    setState(() {
+                      checked = true;
+                      rewarded = gained;
+                    });
+                  },
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(54),
             ),
-            child: Text(checked ? 'Continuer' : 'Vérifier'),
+            child: Text(checked ? 'Réponse vérifiée' : 'Vérifier'),
           ),
         ],
       ),
