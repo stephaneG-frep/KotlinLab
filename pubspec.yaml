@@ -1,0 +1,29 @@
+name: kotlin_lab
+description: Une application moderne et hors ligne pour apprendre Kotlin.
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.6.1
+  go_router: ^17.0.0
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  shared_preferences: ^2.5.3
+  flutter_animate: ^4.5.2
+  google_fonts: ^6.2.1
+  fl_chart: ^1.0.0
+  flutter_markdown: ^0.7.7
+  uuid: ^4.5.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
