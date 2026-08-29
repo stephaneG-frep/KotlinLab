@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/kit.dart';
+import '../../learning/data/learning_catalog.dart';
+import '../../learning/domain/learning_models.dart';
 import '../../profile/presentation/profile_controller.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -13,6 +15,7 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(profileControllerProvider);
+    final resume = _nextLesson(profile.completedLessonIds);
     return ScreenBody(
       child: CustomScrollView(
         slivers: [
@@ -50,16 +53,21 @@ class HomeScreen extends ConsumerWidget {
                   ],
                 ).animate().fadeIn(delay: 180.ms).slideY(begin: .1),
                 const SizedBox(height: 28),
-                const SectionHeader(
+                SectionHeader(
                   title: 'Reprendre le cours',
                   action: 'Voir le parcours',
+                  onTap: () => context.go('/learning'),
                 ),
                 const SizedBox(height: 12),
-                _ContinueCard(onTap: () => context.push('/lesson/variables')),
+                _ContinueCard(
+                  lesson: resume.lesson,
+                  path: resume.path,
+                  onTap: () => context.push('/lesson/${resume.lesson.id}'),
+                ),
                 const SizedBox(height: 28),
                 const SectionHeader(title: 'Défi du jour', action: '+50 XP'),
                 const SizedBox(height: 12),
-                const _DailyChallenge(),
+                _DailyChallenge(onTap: () => context.go('/exercises')),
                 const SizedBox(height: 28),
                 const SectionHeader(title: 'Boîte à outils'),
                 const SizedBox(height: 12),
@@ -79,6 +87,20 @@ class HomeScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  ({Lesson lesson, LearningPath path}) _nextLesson(Set<String> completedIds) {
+    for (final path in learningPaths) {
+      for (var index = 0; index < path.lessons.length; index++) {
+        final lesson = path.lessons[index];
+        if (!completedIds.contains(lesson.id) &&
+            (index == 0 || completedIds.contains(path.lessons[index - 1].id))) {
+          return (lesson: lesson, path: path);
+        }
+      }
+    }
+    final path = learningPaths.last;
+    return (lesson: path.lessons.last, path: path);
   }
 }
 
@@ -134,12 +156,49 @@ class _TopBar extends StatelessWidget {
       Badge(
         smallSize: 8,
         child: IconButton.filledTonal(
-          onPressed: () {},
+          onPressed: () => _showNotifications(context),
           icon: const Icon(Icons.notifications_none_rounded),
           tooltip: 'Notifications',
         ),
       ),
     ],
+  );
+
+  void _showNotifications(BuildContext context) => showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (context) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Notifications',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 12),
+            const ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: CircleAvatar(
+                child: Icon(Icons.local_fire_department_rounded),
+              ),
+              title: Text('Ta série continue aujourd’hui'),
+              subtitle: Text(
+                'Quelques minutes suffisent pour garder le rythme.',
+              ),
+            ),
+            const ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: CircleAvatar(child: Icon(Icons.bolt_rounded)),
+              title: Text('Un nouveau quiz est disponible'),
+              subtitle: Text('Teste tes bases Kotlin en cinq questions.'),
+            ),
+          ],
+        ),
+      ),
+    ),
   );
 }
 
@@ -242,8 +301,14 @@ class _WelcomeCard extends StatelessWidget {
 }
 
 class _ContinueCard extends StatelessWidget {
-  const _ContinueCard({required this.onTap});
+  const _ContinueCard({
+    required this.onTap,
+    required this.lesson,
+    required this.path,
+  });
   final VoidCallback onTap;
+  final Lesson lesson;
+  final LearningPath path;
   @override
   Widget build(BuildContext context) => Card(
     child: InkWell(
@@ -253,20 +318,26 @@ class _ContinueCard extends StatelessWidget {
         padding: const EdgeInsets.all(18),
         child: Row(
           children: [
-            const GradientIcon(icon: Icons.data_object_rounded, size: 58),
+            GradientIcon(icon: lesson.icon, size: 58),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Variables & types',
+                    lesson.title,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 3),
-                  const Text('Fondations Kotlin · Leçon 3'),
+                  Text(
+                    '${path.title} · Leçon ${path.lessons.indexOf(lesson) + 1}',
+                  ),
                   const SizedBox(height: 12),
-                  const ProgressBar(value: .62),
+                  ProgressBar(
+                    value:
+                        (path.lessons.indexOf(lesson) + 1) /
+                        path.lessons.length,
+                  ),
                 ],
               ),
             ),
@@ -292,42 +363,47 @@ class _ContinueCard extends StatelessWidget {
 }
 
 class _DailyChallenge extends StatelessWidget {
-  const _DailyChallenge();
+  const _DailyChallenge({required this.onTap});
+  final VoidCallback onTap;
   @override
   Widget build(BuildContext context) => Card(
-    child: Padding(
-      padding: const EdgeInsets.all(18),
-      child: Row(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: AppColors.accent.withValues(alpha: .18),
-              borderRadius: BorderRadius.circular(18),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: AppColors.accent.withValues(alpha: .18),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: const Icon(
+                Icons.emoji_events_rounded,
+                color: Color(0xFFE09B00),
+                size: 30,
+              ),
             ),
-            child: const Icon(
-              Icons.emoji_events_rounded,
-              color: Color(0xFFE09B00),
-              size: 30,
+            const SizedBox(width: 15),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Le mot mystère',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 3),
+                  const Text('Complète une fonction qui inverse une chaîne.'),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Le mot mystère',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 3),
-                const Text('Complète une fonction qui inverse une chaîne.'),
-              ],
-            ),
-          ),
-          const Icon(Icons.chevron_right_rounded),
-        ],
+            const Icon(Icons.chevron_right_rounded),
+          ],
+        ),
       ),
     ),
   );

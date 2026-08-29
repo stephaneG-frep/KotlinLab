@@ -19,6 +19,8 @@ class ProfileState {
     this.completedExerciseIds = const {},
     this.quizAttempts = 0,
     this.quizCorrectAnswers = 0,
+    this.completedQuizIds = const {},
+    this.startedProjectIds = const {},
   });
 
   final String name;
@@ -35,6 +37,8 @@ class ProfileState {
   final Set<String> completedExerciseIds;
   final int quizAttempts;
   final int quizCorrectAnswers;
+  final Set<String> completedQuizIds;
+  final Set<String> startedProjectIds;
 
   ProfileState copyWith({
     String? name,
@@ -51,6 +55,8 @@ class ProfileState {
     Set<String>? completedExerciseIds,
     int? quizAttempts,
     int? quizCorrectAnswers,
+    Set<String>? completedQuizIds,
+    Set<String>? startedProjectIds,
   }) => ProfileState(
     name: name ?? this.name,
     xp: xp ?? this.xp,
@@ -66,6 +72,8 @@ class ProfileState {
     completedExerciseIds: completedExerciseIds ?? this.completedExerciseIds,
     quizAttempts: quizAttempts ?? this.quizAttempts,
     quizCorrectAnswers: quizCorrectAnswers ?? this.quizCorrectAnswers,
+    completedQuizIds: completedQuizIds ?? this.completedQuizIds,
+    startedProjectIds: startedProjectIds ?? this.startedProjectIds,
   );
 }
 
@@ -97,6 +105,12 @@ class ProfileController extends Notifier<ProfileState> {
     ),
     quizAttempts: _box.get('quizAttempts', defaultValue: 0) as int,
     quizCorrectAnswers: _box.get('quizCorrectAnswers', defaultValue: 0) as int,
+    completedQuizIds: Set<String>.from(
+      _box.get('completedQuizIds', defaultValue: <String>[]) as List,
+    ),
+    startedProjectIds: Set<String>.from(
+      _box.get('startedProjectIds', defaultValue: <String>[]) as List,
+    ),
   );
 
   void toggleTheme(bool dark) {
@@ -162,6 +176,31 @@ class ProfileController extends Notifier<ProfileState> {
       'quizCorrectAnswers': state.quizCorrectAnswers,
     });
     return reward > 0;
+  }
+
+  int completeQuiz(String quizId, {required int score, required int total}) {
+    final alreadyRewarded = state.completedQuizIds.contains(quizId);
+    final quizIds = {...state.completedQuizIds, quizId};
+    final reward = alreadyRewarded ? 0 : score * 10;
+    state = state.copyWith(
+      xp: state.xp + reward,
+      quizAttempts: state.quizAttempts + total,
+      quizCorrectAnswers: state.quizCorrectAnswers + score,
+      completedQuizIds: quizIds,
+    );
+    _box.putAll({
+      'xp': state.xp,
+      'quizAttempts': state.quizAttempts,
+      'quizCorrectAnswers': state.quizCorrectAnswers,
+      'completedQuizIds': quizIds.toList(),
+    });
+    return reward;
+  }
+
+  void startProject(String projectId) {
+    final projects = {...state.startedProjectIds, projectId};
+    state = state.copyWith(startedProjectIds: projects);
+    _box.put('startedProjectIds', projects.toList());
   }
 }
 

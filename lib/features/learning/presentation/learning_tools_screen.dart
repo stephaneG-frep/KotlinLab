@@ -16,6 +16,7 @@ class _PlaygroundScreenState extends State<PlaygroundScreen> {
 }''',
   );
   String output = 'Appuie sur Exécuter pour voir le résultat.';
+  final List<({String code, String output})> history = [];
 
   @override
   void dispose() {
@@ -28,7 +29,11 @@ class _PlaygroundScreenState extends State<PlaygroundScreen> {
     appBar: AppBar(
       title: const Text('Playground Kotlin'),
       actions: [
-        IconButton(onPressed: () {}, icon: const Icon(Icons.history_rounded)),
+        IconButton(
+          onPressed: _showHistory,
+          icon: const Icon(Icons.history_rounded),
+          tooltip: 'Historique',
+        ),
       ],
     ),
     body: Center(
@@ -92,11 +97,7 @@ class _PlaygroundScreenState extends State<PlaygroundScreen> {
               ),
               const SizedBox(height: 12),
               FilledButton.icon(
-                onPressed: () => setState(
-                  () => output = controller.text.contains('println')
-                      ? 'Hello, Kotlin !'
-                      : 'Programme terminé sans sortie.',
-                ),
+                onPressed: _run,
                 icon: const Icon(Icons.play_arrow_rounded),
                 label: const Text('Exécuter la simulation'),
                 style: FilledButton.styleFrom(
@@ -105,6 +106,62 @@ class _PlaygroundScreenState extends State<PlaygroundScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    ),
+  );
+
+  void _run() {
+    final result = controller.text.contains('println')
+        ? 'Hello, Kotlin !'
+        : 'Programme terminé sans sortie.';
+    setState(() {
+      output = result;
+      history.insert(0, (code: controller.text, output: result));
+    });
+  }
+
+  void _showHistory() => showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (context) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Historique des essais',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 12),
+            if (history.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 28),
+                child: Center(child: Text('Aucune exécution pour le moment.')),
+              )
+            else
+              ...history
+                  .take(5)
+                  .map(
+                    (entry) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.terminal_rounded),
+                      title: Text(
+                        entry.code.split('\n').first,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(entry.output),
+                      onTap: () {
+                        controller.text = entry.code;
+                        setState(() => output = entry.output);
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ),
+          ],
         ),
       ),
     ),

@@ -40,7 +40,7 @@ class _LearningScreenState extends ConsumerState<LearningScreen> {
             title: const Text('Ton parcours'),
             actions: [
               IconButton.filledTonal(
-                onPressed: () {},
+                onPressed: () => context.push('/search'),
                 icon: const Icon(Icons.search_rounded),
               ),
               const SizedBox(width: 16),

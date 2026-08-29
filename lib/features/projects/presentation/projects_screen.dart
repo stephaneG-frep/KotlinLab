@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/kit.dart';
@@ -17,13 +18,6 @@ class ProjectsScreen extends StatelessWidget {
           pinned: true,
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           title: const Text('Construire'),
-          actions: [
-            IconButton.filledTonal(
-              onPressed: () {},
-              icon: const Icon(Icons.bookmark_border_rounded),
-            ),
-            const SizedBox(width: 16),
-          ],
         ),
         SliverToBoxAdapter(
           child: Padding(
@@ -36,11 +30,11 @@ class ProjectsScreen extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
                 const SizedBox(height: 22),
-                const _FeaturedProject(),
+                _FeaturedProject(onTap: () => context.push('/project/todo')),
                 const SizedBox(height: 28),
-                const SectionHeader(
+                SectionHeader(
                   title: 'Projets guidés',
-                  action: '14 projets',
+                  action: '${projects.length} projets',
                 ),
               ],
             ),
@@ -67,7 +61,8 @@ class ProjectsScreen extends StatelessWidget {
 }
 
 class _FeaturedProject extends StatelessWidget {
-  const _FeaturedProject();
+  const _FeaturedProject({required this.onTap});
+  final VoidCallback onTap;
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(22),
@@ -122,7 +117,7 @@ class _FeaturedProject extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             FilledButton.tonalIcon(
-              onPressed: () {},
+              onPressed: onTap,
               icon: const Icon(Icons.play_arrow_rounded),
               label: const Text('Découvrir le projet'),
             ),
@@ -140,7 +135,7 @@ class _ProjectCard extends StatelessWidget {
   Widget build(BuildContext context) => Card(
     clipBehavior: Clip.antiAlias,
     child: InkWell(
-      onTap: () {},
+      onTap: () => context.push('/project/${item.id}'),
       child: Padding(
         padding: const EdgeInsets.all(18),
         child: Column(

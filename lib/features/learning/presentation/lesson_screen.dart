@@ -22,9 +22,7 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
     final profile = ref.watch(profileControllerProvider);
     final isFavorite = profile.favoriteLessonIds.contains(widget.lesson.id);
     final isCompleted = profile.completedLessonIds.contains(widget.lesson.id);
-    final body = widget.lesson.content.isEmpty
-        ? '# ${widget.lesson.title}\n\nCette leçon sera bientôt enrichie. Le contenu principal est déjà disponible dans le parcours **Fondations Kotlin**.'
-        : widget.lesson.content;
+    final body = widget.lesson.content;
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.lesson.title),
@@ -60,7 +58,7 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
                 children: [
                   _Meta(
                     icon: Icons.signal_cellular_alt_rounded,
-                    text: 'Débutant',
+                    text: widget.lesson.level,
                   ),
                   const SizedBox(width: 8),
                   _Meta(

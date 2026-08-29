@@ -9,7 +9,9 @@ import '../../features/learning/presentation/lesson_screen.dart';
 import '../../features/learning/presentation/learning_tools_screen.dart';
 import '../../features/learning/presentation/search_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
+import '../../features/projects/presentation/project_detail_screen.dart';
 import '../../features/projects/presentation/projects_screen.dart';
+import '../../features/quizzes/presentation/quick_quiz_screen.dart';
 import '../../shared/presentation/app_shell.dart';
 import '../../shared/presentation/splash_screen.dart';
 
@@ -68,5 +70,15 @@ final appRouter = GoRouter(
     GoRoute(path: '/glossary', builder: (_, _) => const GlossaryScreen()),
     GoRoute(path: '/compare', builder: (_, _) => const CompareScreen()),
     GoRoute(path: '/search', builder: (_, _) => const SearchScreen()),
+    GoRoute(path: '/quiz/quick', builder: (_, _) => const QuickQuizScreen()),
+    GoRoute(
+      path: '/project/:id',
+      builder: (_, state) {
+        final project = projects.firstWhere(
+          (item) => item.id == state.pathParameters['id'],
+        );
+        return ProjectDetailScreen(project: project);
+      },
+    ),
   ],
 );

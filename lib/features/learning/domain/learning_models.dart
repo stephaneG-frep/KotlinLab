@@ -12,6 +12,7 @@ class Lesson {
     required this.status,
     required this.icon,
     this.content = '',
+    this.level = 'Débutant',
   });
 
   final String id;
@@ -22,6 +23,7 @@ class Lesson {
   final LessonStatus status;
   final IconData icon;
   final String content;
+  final String level;
 }
 
 class LearningPath {
@@ -53,6 +55,11 @@ class ExerciseItem {
     required this.xp,
     required this.icon,
     required this.color,
+    required this.prompt,
+    required this.options,
+    required this.correctIndex,
+    required this.explanation,
+    this.code,
   });
 
   final String id;
@@ -62,6 +69,11 @@ class ExerciseItem {
   final int xp;
   final IconData icon;
   final Color color;
+  final String prompt;
+  final List<String> options;
+  final int correctIndex;
+  final String explanation;
+  final String? code;
 }
 
 class ProjectItem {

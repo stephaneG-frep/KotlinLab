@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/kit.dart';
@@ -64,11 +65,11 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const _QuizHero(),
+                  _QuizHero(onTap: () => context.push('/quiz/quick')),
                   const SizedBox(height: 26),
-                  const SectionHeader(
+                  SectionHeader(
                     title: 'Exercices par format',
-                    action: '500+ activités',
+                    action: '${exercises.length} disponibles',
                   ),
                   const SizedBox(height: 12),
                   SizedBox(
@@ -122,7 +123,8 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
 }
 
 class _QuizHero extends StatelessWidget {
-  const _QuizHero();
+  const _QuizHero({required this.onTap});
+  final VoidCallback onTap;
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(22),
@@ -166,7 +168,7 @@ class _QuizHero extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               FilledButton.tonal(
-                onPressed: () {},
+                onPressed: onTap,
                 child: const Text('Commencer'),
               ),
             ],
@@ -267,12 +269,6 @@ class _ExerciseSheetState extends ConsumerState<_ExerciseSheet> {
   int? selected;
   bool checked = false;
   bool rewarded = false;
-  static const choices = [
-    'Bonjour Kotlin',
-    'Hello Kotlin',
-    'Kotlin Hello',
-    'Erreur de compilation',
-  ];
 
   @override
   Widget build(BuildContext context) => SafeArea(
@@ -289,32 +285,33 @@ class _ExerciseSheetState extends ConsumerState<_ExerciseSheet> {
             ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 6),
-          const Text('Quelle sortie produit ce programme ?'),
-          const SizedBox(height: 18),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF201E2A),
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: const Text(
-              r'''val name = "Kotlin"
-println("Hello $name")''',
-              style: TextStyle(
-                color: Color(0xFFEDE9FF),
-                fontFamily: 'monospace',
-                height: 1.6,
+          Text(widget.item.prompt),
+          if (widget.item.code case final code?) ...[
+            const SizedBox(height: 18),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF201E2A),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Text(
+                code,
+                style: const TextStyle(
+                  color: Color(0xFFEDE9FF),
+                  fontFamily: 'monospace',
+                  height: 1.6,
+                ),
               ),
             ),
-          ),
+          ],
           const SizedBox(height: 14),
           ...List.generate(
-            choices.length,
+            widget.item.options.length,
             (i) => Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Material(
-                color: checked && i == 1
+                color: checked && i == widget.item.correctIndex
                     ? AppColors.success.withValues(alpha: .13)
                     : (selected == i
                           ? AppColors.primary.withValues(alpha: .12)
@@ -339,7 +336,7 @@ println("Hello $name")''',
                               : AppColors.muted,
                         ),
                         const SizedBox(width: 12),
-                        Expanded(child: Text(choices[i])),
+                        Expanded(child: Text(widget.item.options[i])),
                       ],
                     ),
                   ),
@@ -351,16 +348,19 @@ println("Hello $name")''',
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: (selected == 1 ? AppColors.success : AppColors.error)
-                    .withValues(alpha: .1),
+                color:
+                    (selected == widget.item.correctIndex
+                            ? AppColors.success
+                            : AppColors.error)
+                        .withValues(alpha: .1),
                 borderRadius: BorderRadius.circular(15),
               ),
               child: Text(
-                selected == 1
+                selected == widget.item.correctIndex
                     ? rewarded
-                          ? 'Excellent ! +${widget.item.xp} XP. L’interpolation insère la valeur de name.'
-                          : 'Bonne réponse ! Cet exercice était déjà validé.'
-                    : r'Pas tout à fait. Avec $name, Kotlin insère directement la valeur « Kotlin ».',
+                          ? 'Excellent ! +${widget.item.xp} XP. ${widget.item.explanation}'
+                          : 'Bonne réponse ! ${widget.item.explanation}'
+                    : 'Pas tout à fait. ${widget.item.explanation}',
               ),
             ),
           const SizedBox(height: 14),
@@ -373,7 +373,7 @@ println("Hello $name")''',
                         .submitExercise(
                           widget.item.id,
                           widget.item.xp,
-                          correct: selected == 1,
+                          correct: selected == widget.item.correctIndex,
                         );
                     setState(() {
                       checked = true;
