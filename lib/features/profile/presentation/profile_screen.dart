@@ -104,13 +104,16 @@ class ProfileScreen extends ConsumerWidget {
   void _settings(BuildContext context) => showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
+    // Hauteur libre + défilement : le contenu ne déborde plus avec une
+    // grande taille de texte ou un petit écran.
+    isScrollControlled: true,
     // Consumer : la feuille se reconstruit quand les préférences changent.
     builder: (context) => Consumer(
       builder: (context, ref, _) {
         final state = ref.watch(profileControllerProvider);
         final controller = ref.read(profileControllerProvider.notifier);
         return SafeArea(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -131,21 +134,21 @@ class ProfileScreen extends ConsumerWidget {
                 SizedBox(
                   width: double.infinity,
                   child: SegmentedButton<ThemeMode>(
+                    // Sans icônes ni coche : les libellés tiennent sur une
+                    // ligne même en grand texte.
+                    showSelectedIcon: false,
                     segments: const [
                       ButtonSegment(
                         value: ThemeMode.system,
-                        icon: Icon(Icons.brightness_auto_rounded),
-                        label: Text('Système'),
+                        label: _SegmentLabel('Système'),
                       ),
                       ButtonSegment(
                         value: ThemeMode.light,
-                        icon: Icon(Icons.light_mode_rounded),
-                        label: Text('Clair'),
+                        label: _SegmentLabel('Clair'),
                       ),
                       ButtonSegment(
                         value: ThemeMode.dark,
-                        icon: Icon(Icons.dark_mode_rounded),
-                        label: Text('Sombre'),
+                        label: _SegmentLabel('Sombre'),
                       ),
                     ],
                     selected: {state.themeMode},
@@ -490,5 +493,17 @@ class _ProgressRow extends StatelessWidget {
       const SizedBox(height: 8),
       ProgressBar(value: value, color: color),
     ],
+  );
+}
+
+/// Libellé réduit plutôt que coupé quand la place manque.
+class _SegmentLabel extends StatelessWidget {
+  const _SegmentLabel(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => FittedBox(
+    fit: BoxFit.scaleDown,
+    child: Text(text, maxLines: 1, softWrap: false),
   );
 }

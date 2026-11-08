@@ -30,11 +30,12 @@ abstract final class AppTheme {
       error: AppColors.error,
     );
     // Police embarquée (assets/fonts) : aucun téléchargement au runtime.
-    // englishLike apporte les tailles de police, indispensables pour
-    // appliquer fontSizeFactor (réglage « Taille du texte »).
-    final typography = Typography.material2021();
-    final baseText = (dark ? typography.white : typography.black)
-        .merge(typography.englishLike)
+    // englishLike apporte les tailles de police (indispensables pour
+    // fontSizeFactor), black/white les couleurs. englishLike est en
+    // inherit: false : il doit servir de base, sinon il écrase les couleurs.
+    final typography = Typography.material2021(colorScheme: scheme);
+    final baseText = typography.englishLike
+        .merge(dark ? typography.white : typography.black)
         .apply(fontFamily: fontFamily);
     return ThemeData(
       useMaterial3: true,
