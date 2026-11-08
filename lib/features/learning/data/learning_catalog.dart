@@ -3,23 +3,6 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../domain/learning_models.dart';
 
-/// Textes génériques, utilisés tant qu'une leçon n'a pas son propre contenu.
-const genericMistakes = [
-  'Reproduire mécaniquement les habitudes de Java au lieu d’utiliser les idiomes Kotlin.',
-  'Rendre une valeur nullable ou mutable sans nécessité.',
-  'Écrire une expression compacte qui devient difficile à relire.',
-];
-const genericJava =
-    'Kotlin supprime une grande partie du code cérémoniel de Java. Les types restent stricts, tandis que l’inférence, les expressions et la null safety rendent l’intention plus visible.';
-const genericMemo = [
-  'Commence par la solution la plus simple.',
-  'Préfère les valeurs immuables.',
-  'Fais exprimer les contraintes par le système de types.',
-  'Donne des noms qui expliquent le métier.',
-];
-const genericChallenge =
-    'Réécris l’exemple avec tes propres données, puis ajoute un cas limite. Explique le résultat attendu avant de lancer le code.';
-
 Lesson _lesson({
   required String id,
   required String title,
@@ -31,10 +14,10 @@ Lesson _lesson({
   required String level,
   int duration = 15,
   int xp = 45,
-  List<String> mistakes = genericMistakes,
-  String java = genericJava,
-  List<String> memo = genericMemo,
-  String challenge = genericChallenge,
+  required List<String> mistakes,
+  required String java,
+  required List<String> memo,
+  required String challenge,
 }) => Lesson(
   id: id,
   title: title,
@@ -1129,6 +1112,32 @@ Les points à surveiller sont propres à Kotlin : lambdas non `inline`, boxing d
         code:
             'class MainActivity : ComponentActivity() {\n    override fun onCreate(state: Bundle?) {\n        super.onCreate(state)\n        setContent { KotlinLabTheme { App() } }\n    }\n}',
         practice: 'Ne conserve jamais une Activity dans un singleton.',
+        mistakes: [
+          r'''Garder une référence à une `Activity` dans un singleton ou un objet à longue durée de vie : elle ne peut plus être libérée, c’est une fuite de mémoire.''',
+          r'''Faire un travail long dans `onCreate` sur le thread principal : l’interface se fige, et Android affiche « L’application ne répond pas » au bout de quelques secondes.''',
+          r'''Oublier qu’une rotation de l’écran recrée l’`Activity` par défaut : tout état non sauvegardé est perdu.''',
+        ],
+        java:
+            r'''Android a longtemps été développé en Java, mais Google recommande Kotlin en priorité depuis 2019. La même `Activity` en Java :
+
+```java
+public class MainActivity extends ComponentActivity {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+    }
+}
+```
+
+`setContent { }` et Jetpack Compose, eux, ne sont utilisables qu’en Kotlin.''',
+        memo: [
+          r'''Démarrage : `onCreate` → `onStart` → `onResume`.''',
+          r'''Arrêt : `onPause` → `onStop` → `onDestroy`.''',
+          r'''Une rotation de l’écran recrée l’`Activity`.''',
+          r'''`AndroidManifest.xml` déclare les activités et les permissions ; `res/` contient les ressources ; `build.gradle.kts` la configuration.''',
+        ],
+        challenge:
+            r'''Ajoute un `Log.d` dans chaque méthode du cycle de vie, lance l’app, tourne le téléphone, passe en arrière-plan puis reviens. Note l’ordre des appels dans Logcat et explique-le.''',
         icon: Icons.folder_special_rounded,
         level: 'Android',
         duration: 22,
@@ -1144,6 +1153,24 @@ Les points à surveiller sont propres à Kotlin : lambdas non `inline`, boxing d
             r'@Composable\nfun Greeting(name: String, onContinue: () -> Unit) {\n    Column(Modifier.padding(24.dp)) {\n        Text("Bonjour $name")\n        Button(onClick = onContinue) { Text("Continuer") }\n    }\n}',
         practice:
             'Remonte l’état au niveau qui le possède et garde les composables stateless.',
+        mistakes: [
+          r'''Mettre l’état à l’intérieur de chaque composable : il devient difficile à réutiliser et à tester. Remonte l’état et passe des valeurs et des callbacks.''',
+          r'''Lancer un appel réseau directement dans le corps d’un composable : il s’exécute à chaque recomposition. Utilise `LaunchedEffect` ou, mieux, un ViewModel.''',
+          r'''Oublier le paramètre `modifier: Modifier = Modifier` : sans lui, l’appelant ne peut pas ajuster la taille ou les marges du composable.''',
+        ],
+        java:
+            r'''Compose repose sur un plugin du compilateur Kotlin : il n’existe pas de version Java.
+
+Avec les Views classiques, on décrit la mise en page dans un fichier XML, puis on la modifie pas à pas depuis le code (`findViewById`, `setText`…). Compose décrit l’interface comme une fonction de l’état : on ne modifie pas l’écran, on le redécrit.''',
+        memo: [
+          r'''`@Composable` marque une fonction qui décrit de l’interface.''',
+          r'''`Column`, `Row` et `Box` organisent les éléments.''',
+          r'''L’ordre des `Modifier` compte : `padding` puis `background` ne donne pas le même rendu que l’inverse.''',
+          r'''L’état descend, les événements remontent.''',
+          r'''`@Preview` affiche un composable dans Android Studio sans lancer l’app.''',
+        ],
+        challenge:
+            r'''Écris un composable `ProfileCard(name, level, onClick, modifier)` sans état interne, avec deux `@Preview` : un nom court et un nom très long. Vérifie que le nom long ne déborde pas, grâce à `maxLines` et `overflow`.''',
         icon: Icons.phone_android_rounded,
         level: 'Android',
         duration: 28,
@@ -1159,6 +1186,24 @@ Les points à surveiller sont propres à Kotlin : lambdas non `inline`, boxing d
             r'@Composable\nfun Counter() {\n    var count by rememberSaveable { mutableIntStateOf(0) }\n    Button(onClick = { count++ }) { Text("Compteur : $count") }\n}',
         practice:
             'Ne place pas de calcul coûteux directement dans une fonction composable.',
+        mistakes: [
+          r'''Écrire `var count = 0` dans un composable : la valeur repart à 0 à chaque recomposition, et la modifier ne redessine rien. Il faut `remember { mutableIntStateOf(0) }`.''',
+          r'''Utiliser `remember` pour une saisie de l’utilisateur : la valeur est perdue à la rotation de l’écran. `rememberSaveable` la conserve.''',
+          r'''Modifier une liste mutable placée dans un état (`list.add(x)`) : Compose ne voit pas le changement. Remplace la liste (`list = list + x`) ou utilise `mutableStateListOf`.''',
+        ],
+        java:
+            r'''Avec les Views classiques, chaque widget garde son propre état (un `EditText` mémorise son texte), et il faut synchroniser à la main l’écran et les données.
+
+Dans Compose, l’état a une seule source de vérité : quand il change, l’interface est redessinée automatiquement.''',
+        memo: [
+          r'''`mutableStateOf` et `mutableIntStateOf` créent un état observé par Compose.''',
+          r'''`remember` conserve une valeur entre deux recompositions.''',
+          r'''`rememberSaveable` survit aussi aux rotations.''',
+          r'''`var x by remember { … }` utilise la délégation de propriété.''',
+          r'''`derivedStateOf` calcule une valeur à partir d’autres états.''',
+        ],
+        challenge:
+            r'''Écris un champ de recherche avec un `TextField` dont le texte est stocké dans un `rememberSaveable`, et affiche en dessous le nombre de caractères. Tourne l’écran pour vérifier que le texte est conservé, puis remplace par `remember` et observe la différence.''',
         icon: Icons.touch_app_rounded,
         level: 'Android',
         xp: 90,
@@ -1173,6 +1218,24 @@ Les points à surveiller sont propres à Kotlin : lambdas non `inline`, boxing d
             r'NavHost(navController, startDestination = "home") {\n    composable("home") { HomeScreen(onUser = { id ->\n        navController.navigate("user/$id")\n    }) }\n    composable("user/{id}") { UserScreen() }\n}',
         practice:
             'Transmets un identifiant et recharge les données depuis la source de vérité.',
+        mistakes: [
+          r'''Passer un objet entier dans la route : transmets seulement son identifiant et recharge les données depuis la source de vérité.''',
+          r'''Appeler `navigate` directement dans le corps d’un composable : la navigation se déclenche à chaque recomposition. Appelle-la uniquement dans un callback d’événement.''',
+          r'''Empiler le même écran à chaque clic : utilise `launchSingleTop = true` ou `popUpTo` pour garder une pile de navigation propre.''',
+        ],
+        java:
+            r'''Avec les Views, on ouvre un écran en lançant une `Activity` avec un `Intent` et des extras, ou avec des Fragments décrits dans un graphe XML.
+
+Navigation Compose fonctionne dans une seule `Activity`. Depuis la version 2.8, les routes peuvent être des classes `@Serializable` typées, ce qui évite les chaînes comme `"user/{id}"`.''',
+        memo: [
+          r'''`NavHost` associe chaque route à un écran avec `composable(route)`.''',
+          r'''`navController.navigate("user/42")` ouvre un écran.''',
+          r'''`popBackStack()` revient en arrière.''',
+          r'''`popUpTo` et `launchSingleTop` contrôlent la pile de navigation.''',
+          r'''Route typée : `@Serializable data class User(val id: Long)`.''',
+        ],
+        challenge:
+            r'''Réécris cette navigation avec des routes typées : `@Serializable object Home` et `@Serializable data class User(val id: Long)`. Dans l’écran utilisateur, récupère l’id avec `backStackEntry.toRoute<User>()`.''',
         icon: Icons.route_rounded,
         level: 'Android',
         xp: 90,
@@ -1187,6 +1250,23 @@ Les points à surveiller sont propres à Kotlin : lambdas non `inline`, boxing d
             'class UsersViewModel : ViewModel() {\n    private val _uiState = MutableStateFlow(UsersState())\n    val uiState = _uiState.asStateFlow()\n    fun refresh() = viewModelScope.launch {\n        _uiState.update { it.copy(loading = true) }\n    }\n}',
         practice:
             'Expose un StateFlow en lecture seule et des fonctions décrivant les intentions.',
+        mistakes: [
+          r'''Exposer le `MutableStateFlow` en public : n’importe quel écran pourrait modifier l’état. Garde-le privé et expose `asStateFlow()`.''',
+          r'''Stocker un `Context`, une `Activity` ou une `View` dans un ViewModel : il vit plus longtemps qu’eux, ce qui provoque une fuite de mémoire.''',
+          r'''Collecter l’état avec `collectAsState()` : `collectAsStateWithLifecycle()` arrête la collecte quand l’écran n’est plus visible.''',
+        ],
+        java: r'''En Java, on associe généralement `ViewModel` et `LiveData`.
+
+`StateFlow` vient des coroutines Kotlin : il a toujours une valeur, se combine avec les opérateurs de Flow, et `update { }` modifie l’état de façon atomique, même si plusieurs coroutines écrivent en même temps.''',
+        memo: [
+          r'''Un ViewModel survit aux rotations de l’écran.''',
+          r'''`viewModelScope` est annulé automatiquement quand le ViewModel est détruit.''',
+          r'''`_uiState` privé et modifiable, `uiState` public en lecture seule.''',
+          r'''`_uiState.update { it.copy(…) }` pour changer l’état.''',
+          r'''Dans Compose : `val state by viewModel.uiState.collectAsStateWithLifecycle()`.''',
+        ],
+        challenge:
+            r'''Complète `refresh()` : passe `loading` à `true`, simule un chargement avec `delay(1000)`, remplis la liste puis repasse `loading` à `false`. Ajoute un champ `error: String?` pour gérer un échec.''',
         icon: Icons.account_tree_rounded,
         level: 'Android',
         duration: 28,
@@ -1201,6 +1281,24 @@ Les points à surveiller sont propres à Kotlin : lambdas non `inline`, boxing d
         code:
             '@Entity data class Note(\n    @PrimaryKey val id: Long, val text: String\n)\n@Dao interface NoteDao {\n    @Query("SELECT * FROM Note") fun observeAll(): Flow<List<Note>>\n    @Insert suspend fun insert(note: Note)\n}',
         practice: 'Mappe les entités de la couche data vers le domaine.',
+        mistakes: [
+          r'''Accéder à la base sur le thread principal : Room le refuse par défaut et lève une exception. Utilise des fonctions `suspend` ou un `Flow`.''',
+          r'''Modifier une `@Entity` sans augmenter la version ni écrire de migration : l’app plante à la mise à jour, ou perd les données avec `fallbackToDestructiveMigration`.''',
+          r'''Renvoyer une `List` au lieu d’un `Flow` pour un écran : l’affichage ne se met pas à jour quand les données changent.''',
+        ],
+        java:
+            r'''Room fonctionne aussi en Java, mais Kotlin apporte les DAO `suspend` et les retours en `Flow`.
+
+Sans Room, avec `SQLiteOpenHelper`, on écrit le SQL dans des chaînes et on lit les résultats ligne par ligne avec un `Cursor` : les erreurs n’apparaissent qu’à l’exécution. Room vérifie les requêtes dès la compilation.''',
+        memo: [
+          r'''`@Entity` et `@PrimaryKey` décrivent une table.''',
+          r'''`@Dao` regroupe les accès : `@Query`, `@Insert`, `@Update`, `@Delete`.''',
+          r'''`@Database(entities = […], version = 1)` déclare la base.''',
+          r'''`suspend` pour une opération ponctuelle, `Flow` pour observer.''',
+          r'''Toute modification du schéma demande une migration.''',
+        ],
+        challenge:
+            r'''Ajoute au DAO une recherche `@Query("SELECT * FROM Note WHERE text LIKE '%' || :query || '%'")` qui renvoie un `Flow<List<Note>>`, et une suppression `@Delete suspend fun delete(note: Note)`. Teste-les avec `Room.inMemoryDatabaseBuilder`.''',
         icon: Icons.storage_rounded,
         level: 'Android',
         xp: 100,
@@ -1214,6 +1312,23 @@ Les points à surveiller sont propres à Kotlin : lambdas non `inline`, boxing d
         code:
             'interface UsersApi {\n    @GET("users/{id}")\n    suspend fun user(@Path("id") id: Long): UserDto\n}\nclass UsersRepository(private val api: UsersApi) {\n    suspend fun user(id: Long) = api.user(id).toDomain()\n}',
         practice: 'Ne laisse pas les DTO réseau sortir de la couche data.',
+        mistakes: [
+          r'''Ne pas gérer les erreurs : sans réseau, l’appel lève une `IOException`, et une réponse 404 ou 500 lève une `HttpException`. Sans `try`, l’app plante.''',
+          r'''Laisser les DTO arriver jusqu’à l’interface : leurs champs nullables et leurs noms imposés par le serveur se propagent partout. Convertis-les en modèles du domaine.''',
+          r'''Oublier la permission `INTERNET` dans `AndroidManifest.xml` : toutes les requêtes échouent.''',
+        ],
+        java:
+            r'''Retrofit vient du monde Java : on y déclare `Call<UserDto> user(@Path("id") long id)` puis on gère le résultat dans des callbacks avec `enqueue`.
+
+En Kotlin, la fonction est `suspend` et renvoie directement le résultat. `kotlinx.serialization` remplace souvent Gson ou Moshi pour décoder le JSON.''',
+        memo: [
+          r'''Annotations : `@GET`, `@POST`, `@Path`, `@Query`, `@Body`.''',
+          r'''`Retrofit.Builder().baseUrl(…).addConverterFactory(…).build()`.''',
+          r'''Trois familles d’erreurs : `IOException` (réseau), `HttpException` (code HTTP), erreur de décodage (JSON inattendu).''',
+          r'''`Response<T>` donne accès au code HTTP et aux en-têtes.''',
+        ],
+        challenge:
+            r'''Écris `suspend fun safeUser(id: Long): Result<User>` qui transforme les trois familles d’erreurs en cas d’une `sealed interface LoadError` (`NoNetwork`, `Server(code)`, `InvalidData`), puis affiche un message différent pour chacun.''',
         icon: Icons.cloud_download_rounded,
         level: 'Android',
         xp: 100,
@@ -1225,9 +1340,27 @@ Les points à surveiller sont propres à Kotlin : lambdas non `inline`, boxing d
         concept:
             'Les tests de ViewModel valident les transitions d’état. Les tests Compose recherchent des nœuds sémantiques.',
         code:
-            '@Test fun counter_increments() {\n    composeRule.setContent { Counter() }\n    composeRule.onNodeWithText("Compteur : 0").assertExists()\n    composeRule.onNodeWithRole(Role.Button).performClick()\n    composeRule.onNodeWithText("Compteur : 1").assertExists()\n}',
+            '@get:Rule val composeRule = createComposeRule()\n\n@Test fun counter_increments() {\n    composeRule.setContent { Counter() }\n    composeRule.onNodeWithText("Compteur : 0").performClick()\n    composeRule.onNodeWithText("Compteur : 1").assertIsDisplayed()\n}',
         practice:
             'Ajoute des descriptions sémantiques utiles aux tests et à l’accessibilité.',
+        mistakes: [
+          r'''Attendre avec `Thread.sleep` : le test devient lent et instable. Compose attend tout seul que l’interface soit stable avant chaque vérification.''',
+          r'''Retrouver les éléments uniquement par leur texte : le test casse dès qu’on change une traduction. `Modifier.testTag("…")` donne un repère stable.''',
+          r'''Tester un ViewModel qui utilise `Dispatchers.Main` sans le remplacer : le test plante. Utilise `Dispatchers.setMain(StandardTestDispatcher())` et `runTest`.''',
+        ],
+        java:
+            r'''Avec les Views, on teste l’interface avec Espresso : `onView(withId(R.id.button)).perform(click())`.
+
+Compose a sa propre API de test, basée sur l’arbre sémantique, c’est-à-dire la même description de l’écran que celle utilisée par les lecteurs d’écran. Des tests bien écrits améliorent donc aussi l’accessibilité.''',
+        memo: [
+          r'''`@get:Rule val composeRule = createComposeRule()`.''',
+          r'''Trouver : `onNodeWithText`, `onNodeWithTag`, `onNodeWithContentDescription`.''',
+          r'''Agir : `performClick()`, `performTextInput("…")`.''',
+          r'''Vérifier : `assertIsDisplayed()`, `assertExists()`, `assertTextEquals("…")`.''',
+          r'''ViewModel : `runTest { }` avec `Dispatchers.setMain(StandardTestDispatcher())`.''',
+        ],
+        challenge:
+            r'''Ajoute `Modifier.testTag("counter_button")` au bouton et réécris le test pour le trouver avec `onNodeWithTag`. Ajoute un second test qui clique trois fois et vérifie que « Compteur : 3 » s’affiche.''',
         icon: Icons.fact_check_rounded,
         level: 'Android',
         duration: 25,

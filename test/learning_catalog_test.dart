@@ -15,27 +15,26 @@ void main() {
       }
     });
 
-    test('les parcours réécrits n’utilisent plus le texte générique', () {
-      // Ajouter ici chaque parcours une fois son contenu réécrit.
-      const rewrittenPaths = {'beginner', 'intermediate', 'advanced'};
-      final generic = [
-        ...genericMistakes,
-        genericJava,
-        ...genericMemo,
-        genericChallenge,
-      ];
-      for (final path in learningPaths.where(
-        (path) => rewrittenPaths.contains(path.id),
-      )) {
-        for (final lesson in path.lessons) {
-          for (final text in generic) {
-            expect(
-              lesson.content.contains(text),
-              isFalse,
-              reason: '${lesson.id} contient encore : $text',
-            );
-          }
-        }
+    test('chaque leçon a ses propres défi, comparaison Java et mémo', () {
+      final lessons = learningPaths.expand((path) => path.lessons).toList();
+      String section(String content, String title) {
+        final start = content.indexOf('## $title');
+        final end = content.indexOf('\n## ', start + 1);
+        return content.substring(start, end == -1 ? content.length : end);
+      }
+
+      for (final title in [
+        'Erreurs fréquentes',
+        'Comparaison avec Java',
+        'Mémo',
+        'Défi',
+      ]) {
+        final sections = lessons.map((l) => section(l.content, title)).toSet();
+        expect(
+          sections.length,
+          lessons.length,
+          reason: 'la section « $title » est identique dans plusieurs leçons',
+        );
       }
     });
 
