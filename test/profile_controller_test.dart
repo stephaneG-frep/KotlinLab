@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
@@ -126,4 +127,18 @@ void main() {
     expect(profile.completedLessonIds, isEmpty);
     expect(profile.activityLog, isEmpty);
   });
+
+  test(
+    'le thème suit le système par défaut et reprend l’ancien réglage',
+    () async {
+      expect(read(createContainer()).themeMode, ThemeMode.system);
+
+      await box.put('darkMode', true);
+      expect(read(createContainer()).themeMode, ThemeMode.dark);
+
+      final c = createContainer();
+      ctrl(c).setThemeMode(ThemeMode.light);
+      expect(read(createContainer()).themeMode, ThemeMode.light);
+    },
+  );
 }

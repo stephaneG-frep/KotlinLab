@@ -39,7 +39,7 @@ class ProfileState {
     this.studyMinutes = 0,
     this.dailyMinutes = 0,
     this.dailyGoal = 25,
-    this.themeMode = ThemeMode.light,
+    this.themeMode = ThemeMode.system,
     this.textScale = 1,
     this.favoriteLessonIds = const {},
     this.completedLessonIds = const {},
@@ -123,7 +123,7 @@ class ProfileController extends Notifier<ProfileState> {
       name: _read('name', ''),
       xp: _read('xp', 0),
       dailyGoal: _read('dailyGoal', 25),
-      themeMode: _read('darkMode', false) ? ThemeMode.dark : ThemeMode.light,
+      themeMode: _readThemeMode(),
       textScale: _readDouble('textScale', 1),
       favoriteLessonIds: _readIds('favoriteLessonIds'),
       completedLessonIds: _readIds('completedLessonIds'),
@@ -151,9 +151,9 @@ class ProfileController extends Notifier<ProfileState> {
     return days;
   }
 
-  void toggleTheme(bool dark) {
-    state = state.copyWith(themeMode: dark ? ThemeMode.dark : ThemeMode.light);
-    _box.put('darkMode', dark);
+  void setThemeMode(ThemeMode mode) {
+    state = state.copyWith(themeMode: mode);
+    _box.put('themeMode', mode.name);
   }
 
   void setTextScale(double value) {
@@ -300,6 +300,19 @@ class ProfileController extends Notifier<ProfileState> {
   T _read<T>(String key, T fallback) {
     final value = _box.get(key);
     return value is T ? value : fallback;
+  }
+
+  /// `themeMode` (nom de l'enum) ; repli sur l'ancien booléen `darkMode`.
+  ThemeMode _readThemeMode() {
+    final name = _box.get('themeMode');
+    for (final mode in ThemeMode.values) {
+      if (mode.name == name) return mode;
+    }
+    final legacyDark = _box.get('darkMode');
+    if (legacyDark is bool) {
+      return legacyDark ? ThemeMode.dark : ThemeMode.light;
+    }
+    return ThemeMode.system;
   }
 
   double _readDouble(String key, double fallback) {

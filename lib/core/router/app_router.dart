@@ -7,6 +7,8 @@ import '../../features/learning/data/learning_catalog.dart';
 import '../../features/learning/presentation/learning_screen.dart';
 import '../../features/learning/presentation/lesson_screen.dart';
 import '../../features/learning/presentation/learning_tools_screen.dart';
+import '../../features/playground/data/output_challenges.dart';
+import '../../features/playground/presentation/playground_screen.dart';
 import '../../features/learning/presentation/search_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/projects/presentation/project_detail_screen.dart';
@@ -74,6 +76,17 @@ final appRouter = GoRouter(
       },
     ),
     GoRoute(path: '/playground', builder: (_, _) => const PlaygroundScreen()),
+    GoRoute(
+      path: '/playground/:id',
+      builder: (_, state) {
+        final challenge = outputChallenges
+            .where((item) => item.id == state.pathParameters['id'])
+            .firstOrNull;
+        return challenge == null
+            ? const NotFoundScreen(message: 'Cet extrait n’existe pas.')
+            : OutputChallengeScreen(challenge: challenge);
+      },
+    ),
     GoRoute(path: '/glossary', builder: (_, _) => const GlossaryScreen()),
     GoRoute(path: '/compare', builder: (_, _) => const CompareScreen()),
     GoRoute(path: '/search', builder: (_, _) => const SearchScreen()),

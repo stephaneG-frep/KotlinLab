@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-enum LessonStatus { completed, current, locked }
-
 class Lesson {
   const Lesson({
     required this.id,
@@ -9,7 +7,6 @@ class Lesson {
     required this.subtitle,
     required this.duration,
     required this.xp,
-    required this.status,
     required this.icon,
     this.content = '',
     this.level = 'Débutant',
@@ -20,7 +17,6 @@ class Lesson {
   final String subtitle;
   final int duration;
   final int xp;
-  final LessonStatus status;
   final IconData icon;
   final String content;
   final String level;
@@ -33,7 +29,6 @@ class LearningPath {
     required this.subtitle,
     required this.color,
     required this.icon,
-    required this.progress,
     required this.lessons,
   });
 
@@ -42,7 +37,6 @@ class LearningPath {
   final String subtitle;
   final Color color;
   final IconData icon;
-  final double progress;
   final List<Lesson> lessons;
 }
 

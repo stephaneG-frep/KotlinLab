@@ -422,7 +422,12 @@ class _QuickTools extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const tools = [
-      (Icons.terminal_rounded, 'Playground', '/playground', AppColors.primary),
+      (
+        Icons.terminal_rounded,
+        'Devine la sortie',
+        '/playground',
+        AppColors.primary,
+      ),
       (Icons.menu_book_rounded, 'Glossaire', '/glossary', AppColors.secondary),
       (
         Icons.compare_arrows_rounded,

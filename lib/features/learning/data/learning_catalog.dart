@@ -3,6 +3,23 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../domain/learning_models.dart';
 
+/// Textes génériques, utilisés tant qu'une leçon n'a pas son propre contenu.
+const genericMistakes = [
+  'Reproduire mécaniquement les habitudes de Java au lieu d’utiliser les idiomes Kotlin.',
+  'Rendre une valeur nullable ou mutable sans nécessité.',
+  'Écrire une expression compacte qui devient difficile à relire.',
+];
+const genericJava =
+    'Kotlin supprime une grande partie du code cérémoniel de Java. Les types restent stricts, tandis que l’inférence, les expressions et la null safety rendent l’intention plus visible.';
+const genericMemo = [
+  'Commence par la solution la plus simple.',
+  'Préfère les valeurs immuables.',
+  'Fais exprimer les contraintes par le système de types.',
+  'Donne des noms qui expliquent le métier.',
+];
+const genericChallenge =
+    'Réécris l’exemple avec tes propres données, puis ajoute un cas limite. Explique le résultat attendu avant de lancer le code.';
+
 Lesson _lesson({
   required String id,
   required String title,
@@ -14,19 +31,40 @@ Lesson _lesson({
   required String level,
   int duration = 15,
   int xp = 45,
+  List<String> mistakes = genericMistakes,
+  String java = genericJava,
+  List<String> memo = genericMemo,
+  String challenge = genericChallenge,
 }) => Lesson(
   id: id,
   title: title,
   subtitle: subtitle,
   duration: duration,
   xp: xp,
-  status: LessonStatus.locked,
   icon: icon,
   level: level,
-  content: _course(title, concept, code.replaceAll(r'\n', '\n'), practice),
+  content: _course(
+    title: title,
+    concept: concept,
+    code: code.replaceAll(r'\n', '\n'),
+    practice: practice,
+    mistakes: mistakes,
+    java: java,
+    memo: memo,
+    challenge: challenge,
+  ),
 );
 
-String _course(String title, String concept, String code, String practice) =>
+String _course({
+  required String title,
+  required String concept,
+  required String code,
+  required String practice,
+  required List<String> mistakes,
+  required String java,
+  required List<String> memo,
+  required String challenge,
+}) =>
     '''
 # $title
 
@@ -52,24 +90,19 @@ Observe les types, les valeurs qui peuvent évoluer et le résultat de chaque ex
 
 ## Erreurs fréquentes
 
-- Reproduire mécaniquement les habitudes de Java au lieu d’utiliser les idiomes Kotlin.
-- Rendre une valeur nullable ou mutable sans nécessité.
-- Écrire une expression compacte qui devient difficile à relire.
+${mistakes.map((item) => '- $item').join('\n')}
 
 ## Comparaison avec Java
 
-Kotlin supprime une grande partie du code cérémoniel de Java. Les types restent stricts, tandis que l’inférence, les expressions et la null safety rendent l’intention plus visible.
+$java
 
 ## Mémo
 
-1. Commence par la solution la plus simple.
-2. Préfère les valeurs immuables.
-3. Fais exprimer les contraintes par le système de types.
-4. Donne des noms qui expliquent le métier.
+${[for (var i = 0; i < memo.length; i++) '${i + 1}. ${memo[i]}'].join('\n')}
 
 ## Défi
 
-Réécris l’exemple avec tes propres données, puis ajoute un cas limite. Explique le résultat attendu avant de lancer le code.
+$challenge
 ''';
 
 final learningPaths = <LearningPath>[
@@ -79,7 +112,6 @@ final learningPaths = <LearningPath>[
     subtitle: 'Débutant · 12 leçons',
     color: AppColors.primary,
     icon: Icons.rocket_launch_rounded,
-    progress: 0,
     lessons: [
       _lesson(
         id: 'intro',
@@ -90,6 +122,31 @@ final learningPaths = <LearningPath>[
         code: 'fun main() {\n    println("Bienvenue dans KotlinLab")\n}',
         practice:
             'Exécute de petits programmes souvent : une boucle de retour rapide accélère l’apprentissage.',
+        mistakes: [
+          r'''Penser que Kotlin ne sert qu’à Android : il cible aussi la JVM côté serveur, le web (Kotlin/JS et Wasm) et le natif.''',
+          r'''Croire qu’il faut maîtriser Java avant de commencer : Kotlin s’apprend directement.''',
+          r'''Oublier `main` : c’est le point d’entrée, sans elle le programme ne s’exécute pas.''',
+        ],
+        java:
+            r'''En Java, le même programme demande une classe et une méthode statique :
+
+```java
+public class Main {
+    public static void main(String[] args) {
+        System.out.println("Bienvenue dans KotlinLab");
+    }
+}
+```
+
+En Kotlin, une fonction peut exister en dehors de toute classe : `fun main()` suffit.''',
+        memo: [
+          r'''Kotlin est statiquement typé : les erreurs de type sont détectées à la compilation.''',
+          r'''Il est interopérable avec Java : les deux langages peuvent cohabiter dans un même projet.''',
+          r'''Le point d’entrée est `fun main()`.''',
+          r'''Le point-virgule en fin de ligne est facultatif.''',
+        ],
+        challenge:
+            r'''Modifie le programme pour afficher deux lignes : ton prénom, puis la raison pour laquelle tu apprends Kotlin.''',
         icon: Icons.waving_hand_rounded,
         level: 'Débutant',
         duration: 6,
@@ -105,6 +162,28 @@ final learningPaths = <LearningPath>[
             r'fun main() {\n    val learner = "Ada"\n    println("Bonjour, $learner !")\n}',
         practice:
             'Utilise l’interpolation de chaînes plutôt que de longues concaténations avec +.',
+        mistakes: [
+          r'''Confondre `print` et `println` : `print` n’ajoute pas de retour à la ligne.''',
+          r'''Écrire `"Bonjour, " + learner + " !"` alors que `"Bonjour, $learner !"` est plus lisible.''',
+          r'''Oublier les accolades autour d’une expression : `"$learner.length"` affiche le prénom suivi de `.length`, il faut écrire `"${learner.length}"`.''',
+        ],
+        java:
+            r'''Java n’a pas d’interpolation de chaînes : on concatène avec `+` ou on passe par `String.format`.
+
+```java
+String learner = "Ada";
+System.out.println("Bonjour, " + learner + " !");
+```
+
+Kotlin intègre les templates directement dans les chaînes.''',
+        memo: [
+          r'''`println(x)` affiche `x` puis passe à la ligne.''',
+          r'''`$nom` insère la valeur d’une variable.''',
+          r'''`${expression}` insère le résultat d’une expression.''',
+          r'''`fun main(args: Array<String>)` permet de lire les arguments de la ligne de commande.''',
+        ],
+        challenge:
+            r'''Déclare ton prénom et ton âge, puis affiche « Ada aura 37 ans l’an prochain » en calculant l’âge directement dans le template avec `${}`.''',
         icon: Icons.terminal_rounded,
         level: 'Débutant',
         duration: 8,
@@ -120,6 +199,29 @@ final learningPaths = <LearningPath>[
             r'val language: String = "Kotlin"\nvar score = 0\nscore += 10\nprintln("$language : $score XP")',
         practice:
             'Commence toujours par val et ne passe à var que si la réassignation est nécessaire.',
+        mistakes: [
+          r'''Utiliser `var` par réflexe : chaque `var` est un état supplémentaire à suivre.''',
+          r'''Croire que `val` rend l’objet immuable : avec `val list = mutableListOf(1)`, on ne peut pas réassigner `list`, mais `list.add(2)` fonctionne.''',
+          r'''Déclarer `var x` sans valeur ni type : Kotlin exige une valeur initiale ou un type explicite.''',
+        ],
+        java:
+            r'''`val` correspond à une variable `final` en Java, et l’inférence au `var` de Java 10 :
+
+```java
+final String language = "Kotlin";
+int score = 0;
+score += 10;
+```
+
+En Kotlin, la version immuable est aussi courte à écrire que la version modifiable, ce qui encourage les bonnes habitudes.''',
+        memo: [
+          r'''`val` : lecture seule après l’initialisation.''',
+          r'''`var` : réassignable.''',
+          r'''Le type est inféré : `val n = 3` est un `Int`.''',
+          r'''Un type explicite s’écrit après deux-points : `val n: Long = 3`.''',
+        ],
+        challenge:
+            r'''Écris un compteur de points : un `val` pour le nom du joueur, un `var` pour le score. Ajoute trois victoires de 10 points et affiche le total. Essaie ensuite de réassigner le nom et lis le message d’erreur du compilateur.''',
         icon: Icons.data_object_rounded,
         level: 'Débutant',
         duration: 14,
@@ -135,6 +237,23 @@ final learningPaths = <LearningPath>[
             'val age = 28\nval price = 19.99\nval active = true\nval initial = \'K\'\nprintln(age.toDouble() + price)',
         practice:
             'Choisis le type qui traduit le domaine, pas simplement le plus grand type.',
+        mistakes: [
+          r'''Attendre une conversion automatique : `val total: Double = age` ne compile pas, il faut écrire `age.toDouble()`.''',
+          r'''Diviser deux `Int` en espérant une décimale : `7 / 2` vaut `3`.''',
+          r'''Confondre `'K'` (un `Char`) et `"K"` (une `String`).''',
+        ],
+        java:
+            r'''Java distingue les types primitifs (`int`) et leurs classes enveloppes (`Integer`). Kotlin n’a qu’un seul type `Int` : le compilateur utilise un primitif quand c’est possible.
+
+Java élargit aussi implicitement un `int` en `double`. Kotlin refuse : chaque conversion est écrite, donc visible.''',
+        memo: [
+          r'''`Int` (32 bits), `Long` (64 bits, suffixe `L`), `Double`, `Boolean`, `Char`, `String`.''',
+          r'''Les conversions sont explicites : `toInt()`, `toDouble()`, `toString()`.''',
+          r'''`"42".toInt()` lève une exception si le texte n’est pas un nombre ; `toIntOrNull()` renvoie `null`.''',
+          r'''Les grands nombres se lisent mieux avec des tirets bas : `1_000_000`.''',
+        ],
+        challenge:
+            r'''Convertis le texte `"19.99"` en `Double`, ajoute une TVA de 20 % et affiche le résultat. Teste ensuite `"abc".toDoubleOrNull()` et explique ce qui s’affiche.''',
         icon: Icons.text_fields_rounded,
         level: 'Débutant',
       ),
@@ -148,6 +267,24 @@ final learningPaths = <LearningPath>[
             r'val subtotal = 80.0\nval freeDelivery = subtotal >= 50.0\nval total = subtotal * 1.20\nprintln("Total: $total, offerte: $freeDelivery")',
         practice:
             'Décompose les conditions complexes dans des variables booléennes bien nommées.',
+        mistakes: [
+          r'''Comparer des chaînes avec `===` : `==` compare le contenu, `===` compare les références.''',
+          r'''Oublier que `&&` et `||` court-circuitent : la partie droite peut ne jamais être évaluée.''',
+          r'''Écrire `a > 0 && !(b < 10 || c)` au lieu de nommer chaque condition dans un `val`.''',
+        ],
+        java:
+            r'''En Java, `==` compare les références des objets : il faut `equals()` pour comparer le contenu de deux chaînes.
+
+En Kotlin, `==` appelle `equals()` et gère `null` : `"a" == "a"` fait ce qu’on attend. L’égalité de référence s’écrit `===`.''',
+        memo: [
+          r'''Arithmétique : `+ - * / %`.''',
+          r'''Affectation composée : `+= -= *= /=`.''',
+          r'''Comparaison : `== != < > <= >=`.''',
+          r'''Logique : `&& || !`.''',
+          r'''`in` teste l’appartenance : `x in 1..10`.''',
+        ],
+        challenge:
+            r'''Détermine si une commande a droit à la livraison gratuite : sous-total d’au moins 50 € ou client premium, mais jamais pour une adresse hors zone. Nomme chaque condition dans un `val` booléen.''',
         icon: Icons.calculate_rounded,
         level: 'Débutant',
       ),
@@ -161,6 +298,23 @@ final learningPaths = <LearningPath>[
             'val score = 82\nval grade = when {\n    score >= 90 -> "A"\n    score >= 75 -> "B"\n    else -> "C"\n}\nprintln(grade)',
         practice:
             'Utilise when quand plusieurs branches représentent un même choix métier.',
+        mistakes: [
+          r'''Oublier `else` dans un `when` utilisé comme expression : le compilateur l’exige s’il ne peut pas prouver que tous les cas sont couverts.''',
+          r'''Mettre les branches dans le mauvais ordre : `when` s’arrête à la première branche vraie, donc `score >= 75` placé avant `score >= 90` capture aussi les A.''',
+          r'''Écrire `if (x) { y = 1 } else { y = 2 }` au lieu de `val y = if (x) 1 else 2`.''',
+        ],
+        java:
+            r'''Java a l’opérateur ternaire `cond ? a : b`. Kotlin n’en a pas besoin : `if` est déjà une expression qui renvoie une valeur.
+
+`when` remplace `switch` et accepte des valeurs multiples (`1, 2 ->`), des intervalles (`in 3..9 ->`), des tests de type (`is String ->`) ou des conditions quelconques.''',
+        memo: [
+          r'''`val x = if (condition) a else b`.''',
+          r'''`when (valeur) { 1, 2 -> … ; in 3..9 -> … ; else -> … }`.''',
+          r'''`when { condition -> … }` s’écrit aussi sans argument.''',
+          r'''Les branches sont testées dans l’ordre.''',
+        ],
+        challenge:
+            r'''Écris une fonction `shippingCost(weight: Double): Double` avec `when` : gratuit jusqu’à 0,5 kg, 4,90 € jusqu’à 2 kg, 9,90 € au-delà. Teste 0.5, 2.0 et 10.0 pour vérifier les bornes.''',
         icon: Icons.alt_route_rounded,
         level: 'Débutant',
         duration: 16,
@@ -176,6 +330,23 @@ final learningPaths = <LearningPath>[
             'for (number in 1..5) {\n    println(number * number)\n}\nfor (index in 10 downTo 0 step 2) println(index)',
         practice:
             'Pour transformer une collection, préfère souvent map ou filter à une boucle avec état mutable.',
+        mistakes: [
+          r'''Confondre `1..5` (5 inclus) et `1 until 5` (5 exclu).''',
+          r'''Écrire `for (i in 10..0)` : l’intervalle est vide, il faut `10 downTo 0`.''',
+          r'''Parcourir les indices pour lire chaque élément : `for (item in list)` suffit, et `withIndex()` donne l’indice et l’élément.''',
+        ],
+        java:
+            r'''La boucle Java `for (int i = 0; i < n; i++)` s’écrit `for (i in 0 until n)` en Kotlin.
+
+Il n’y a pas de boucle à trois parties : on parcourt toujours un intervalle ou une collection. `while` et `do … while` existent dans les deux langages.''',
+        memo: [
+          r'''`1..5` inclut 5 ; `1 until 5` et `1..<5` l’excluent.''',
+          r'''`downTo` descend, `step` change le pas.''',
+          r'''`for ((index, item) in list.withIndex())` donne l’indice et la valeur.''',
+          r'''`break` et `continue` fonctionnent comme en Java.''',
+        ],
+        challenge:
+            r'''Affiche la table de multiplication de 7 de 1 à 10, puis uniquement les résultats pairs. Réécris ensuite la seconde version sans boucle, avec `(1..10).map { … }.filter { … }`.''',
         icon: Icons.loop_rounded,
         level: 'Débutant',
       ),
@@ -189,6 +360,24 @@ final learningPaths = <LearningPath>[
             'fun finalPrice(price: Double, discount: Double = 0.0): Double =\n    price * (1 - discount)\n\nprintln(finalPrice(100.0, discount = 0.15))',
         practice:
             'Écris des fonctions courtes dont le nom décrit le résultat ou l’action.',
+        mistakes: [
+          r'''Multiplier les surcharges au lieu d’utiliser des paramètres par défaut.''',
+          r'''Passer plusieurs paramètres du même type sans les nommer : `finalPrice(100.0, 0.15)` est ambigu, `discount = 0.15` est clair.''',
+          r'''Oublier le type de retour d’une fonction à corps bloc : sans `: Double`, une fonction écrite avec `{ }` renvoie `Unit`.''',
+        ],
+        java:
+            r'''Java n’a ni paramètres par défaut ni arguments nommés : on écrit plusieurs surcharges de la même méthode.
+
+En Kotlin, une fonction peut aussi être déclarée directement dans un fichier, sans classe utilitaire remplie de méthodes `static`.''',
+        memo: [
+          r'''`fun nom(param: Type): Retour { … }`.''',
+          r'''Corps expression : `fun double(x: Int) = x * 2`.''',
+          r'''Valeur par défaut : `discount: Double = 0.0`.''',
+          r'''Argument nommé à l’appel : `finalPrice(100.0, discount = 0.15)`.''',
+          r'''`Unit` signale qu’une fonction ne renvoie pas de valeur utile.''',
+        ],
+        challenge:
+            r'''Écris `formatPrice(amount: Double, currency: String = "€", decimals: Int = 2): String`. Appelle-la de trois façons différentes, dont une qui ne précise que `decimals`, en argument nommé.''',
         icon: Icons.functions_rounded,
         level: 'Débutant',
         duration: 18,
@@ -204,6 +393,21 @@ final learningPaths = <LearningPath>[
             'val raw = "  kotlin lab  "\nval words = raw.trim().split(" ")\nval title = words.joinToString(" ") { it.replaceFirstChar(Char::uppercase) }\nprintln(title)',
         practice:
             'Utilise la bibliothèque standard avant de réinventer un traitement de texte.',
+        mistakes: [
+          r'''Croire que `trim()` modifie la chaîne : il renvoie une nouvelle chaîne, il faut récupérer le résultat.''',
+          r'''Concaténer dans une boucle avec `+=` : `buildString { }` ou `joinToString` sont plus lisibles et plus efficaces.''',
+          r'''Comparer sans tenir compte de la casse en appelant `lowercase()` des deux côtés : `a.equals(b, ignoreCase = true)` existe.''',
+        ],
+        java:
+            r'''Comme en Java, les `String` sont immuables. Kotlin ajoute les templates, les chaînes brutes `"""…"""` (proches des text blocks de Java) et de nombreuses fonctions : `trim`, `split`, `replaceFirstChar`, `removePrefix`, `padStart`…''',
+        memo: [
+          r'''`"Bonjour $nom"` et `"${a + b}"`.''',
+          r'''`trim`, `split`, `uppercase`, `lowercase`, `replace`.''',
+          r'''`"""…""".trimIndent()` pour un texte sur plusieurs lignes.''',
+          r'''`joinToString(", ")` assemble les éléments d’une liste.''',
+        ],
+        challenge:
+            r'''Transforme `"  ada LOVELACE  "` en `"Ada Lovelace"`. Indice : `trim()`, `lowercase()`, `split(" ")`, puis `replaceFirstChar`.''',
         icon: Icons.short_text_rounded,
         level: 'Débutant',
       ),
@@ -217,6 +421,23 @@ final learningPaths = <LearningPath>[
             'val scores = listOf(12, 18, 9, 16)\nval passed = scores\n    .filter { it >= 10 }\n    .map { it * 5 }\nprintln(passed)',
         practice:
             'Expose une List en lecture seule même si l’implémentation interne est mutable.',
+        mistakes: [
+          r'''Croire que `listOf` est vraiment immuable : c’est une vue en lecture seule, pas une copie protégée.''',
+          r'''Lire `list[5]` sur une liste de 3 éléments : `IndexOutOfBoundsException`. `getOrNull(5)` renvoie `null`.''',
+          r'''Enchaîner `filter` puis `first()` sans penser au cas vide : `first()` lève une exception, `firstOrNull()` non.''',
+        ],
+        java:
+            r'''Java propose `List.of(…)`, et les traitements passent par `stream()` puis `collect(…)`.
+
+En Kotlin, `map`, `filter` ou `sortedBy` s’appellent directement sur la liste et renvoient une nouvelle `List`.''',
+        memo: [
+          r'''`listOf` : lecture seule ; `mutableListOf` : modifiable.''',
+          r'''`list[0]`, `first()`, `last()`, `getOrNull(i)`.''',
+          r'''`filter`, `map`, `sortedBy`, `sum`, `average`.''',
+          r'''`in` teste la présence d’un élément : `3 in list`.''',
+        ],
+        challenge:
+            r'''À partir de `listOf("kiwi", "pomme", "fraise", "ananas")`, affiche les fruits de plus de 5 lettres, triés par longueur, en majuscules et séparés par des virgules.''',
         icon: Icons.view_list_rounded,
         level: 'Débutant',
         duration: 18,
@@ -232,6 +453,23 @@ final learningPaths = <LearningPath>[
             'val tags = setOf("kotlin", "android", "kotlin")\nval capitals = mapOf("France" to "Paris", "Japon" to "Tokyo")\nprintln(tags.size)\nprintln(capitals["France"])',
         practice:
             'Choisis la collection selon l’opération principale : ordre, unicité ou accès par clé.',
+        mistakes: [
+          r'''Traiter `map["clé"]` comme une valeur non nulle : le résultat est nullable car la clé peut manquer. Utilise `?:` pour une valeur de repli.''',
+          r'''Utiliser une `List` puis `distinct()` après chaque ajout, alors qu’un `Set` garantit déjà l’unicité.''',
+          r'''Vouloir modifier une `Map` créée avec `mapOf` : elle n’a pas de `put`, il faut `mutableMapOf`.''',
+        ],
+        java:
+            r'''`"France" to "Paris"` crée une `Pair` : c’est plus concis que `Map.of("France", "Paris")` ou qu’une série de `put`.
+
+L’accès `capitals["France"]` remplace `capitals.get("France")`.''',
+        memo: [
+          r'''`setOf`, `mutableSetOf` : aucun doublon.''',
+          r'''`mapOf(clé to valeur)`, `mutableMapOf()`.''',
+          r'''`map[clé]` renvoie un type nullable.''',
+          r'''`for ((clé, valeur) in map)` parcourt les entrées.''',
+        ],
+        challenge:
+            r'''Compte les occurrences de chaque mot dans `"le chat et le chien et le lapin"` avec une `mutableMapOf<String, Int>()`, puis refais-le en une ligne avec `groupingBy { it }.eachCount()`.''',
         icon: Icons.hub_rounded,
         level: 'Débutant',
       ),
@@ -245,6 +483,23 @@ final learningPaths = <LearningPath>[
             'fun average(values: List<Int>) = values.average()\n\nfun main() {\n    val scores = listOf(14, 18, 11)\n    val result = average(scores)\n    println(if (result >= 10) "Validé" else "À revoir")\n}',
         practice:
             'Avant de coder, écris les entrées, le résultat attendu et deux cas limites.',
+        mistakes: [
+          r'''Tout écrire dans `main` : isole chaque calcul dans une fonction que tu peux tester seule.''',
+          r'''Oublier la liste vide : `emptyList<Int>().average()` renvoie `NaN`, et `NaN >= 10` est faux.''',
+          r'''Mélanger calcul et affichage : une fonction qui renvoie une valeur se réutilise plus facilement qu’une fonction qui affiche.''',
+        ],
+        java:
+            r'''En Java, le même programme demanderait une classe, une méthode statique `average` et un stream (`mapToInt(…).average().orElse(0)`).
+
+En Kotlin, des fonctions de premier niveau et les fonctions de collection suffisent.''',
+        memo: [
+          r'''Une fonction, une responsabilité.''',
+          r'''Des entrées et sorties explicites rendent le code testable.''',
+          r'''Pense toujours aux cas limites : vide, zéro, négatif.''',
+          r'''`if` est une expression utilisable directement dans `println`.''',
+        ],
+        challenge:
+            r'''Écris un mini-bulletin : une `Map` qui associe un nom à une liste de notes. Pour chaque élève, affiche sa moyenne arrondie à une décimale suivie de « Validé » ou « À revoir ». Prévois un élève sans aucune note.''',
         icon: Icons.school_rounded,
         level: 'Débutant',
         duration: 22,
@@ -258,7 +513,6 @@ final learningPaths = <LearningPath>[
     subtitle: 'Intermédiaire · 10 leçons',
     color: AppColors.secondary,
     icon: Icons.widgets_rounded,
-    progress: 0,
     lessons: [
       _lesson(
         id: 'classes',
@@ -404,7 +658,6 @@ final learningPaths = <LearningPath>[
     subtitle: 'Avancé · 8 leçons',
     color: const Color(0xFFFF8A65),
     icon: Icons.bolt_rounded,
-    progress: 0,
     lessons: [
       _lesson(
         id: 'coroutines',
@@ -525,7 +778,6 @@ final learningPaths = <LearningPath>[
     subtitle: 'Spécialisation · 8 leçons',
     color: AppColors.success,
     icon: Icons.android_rounded,
-    progress: 0,
     lessons: [
       _lesson(
         id: 'android_project',

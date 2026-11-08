@@ -29,7 +29,7 @@ class ProfileScreen extends ConsumerWidget {
             title: const Text('Mon profil'),
             actions: [
               IconButton.filledTonal(
-                onPressed: () => _settings(context, profile, controller),
+                onPressed: () => _settings(context),
                 icon: const Icon(Icons.settings_rounded),
                 tooltip: 'Préférences',
               ),
@@ -82,7 +82,7 @@ class ProfileScreen extends ConsumerWidget {
                 _BadgeGrid(badges: badges),
                 const SizedBox(height: 28),
                 SectionHeader(
-                  title: 'Performance aux quiz',
+                  title: 'Précision des réponses',
                   action: profile.quizAttempts == 0
                       ? 'Pas encore tenté'
                       : '${((profile.quizCorrectAnswers / profile.quizAttempts) * 100).round()} %',
@@ -101,61 +101,88 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  void _settings(
-    BuildContext context,
-    ProfileState state,
-    ProfileController controller,
-  ) => showModalBottomSheet<void>(
+  void _settings(BuildContext context) => showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
-    builder: (context) => SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Préférences',
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
+    // Consumer : la feuille se reconstruit quand les préférences changent.
+    builder: (context) => Consumer(
+      builder: (context, ref, _) {
+        final state = ref.watch(profileControllerProvider);
+        final controller = ref.read(profileControllerProvider.notifier);
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Préférences',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.dark_mode_rounded),
+                  title: Text('Thème'),
+                ),
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<ThemeMode>(
+                    segments: const [
+                      ButtonSegment(
+                        value: ThemeMode.system,
+                        icon: Icon(Icons.brightness_auto_rounded),
+                        label: Text('Système'),
+                      ),
+                      ButtonSegment(
+                        value: ThemeMode.light,
+                        icon: Icon(Icons.light_mode_rounded),
+                        label: Text('Clair'),
+                      ),
+                      ButtonSegment(
+                        value: ThemeMode.dark,
+                        icon: Icon(Icons.dark_mode_rounded),
+                        label: Text('Sombre'),
+                      ),
+                    ],
+                    selected: {state.themeMode},
+                    onSelectionChanged: (modes) =>
+                        controller.setThemeMode(modes.first),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.text_fields_rounded),
+                  title: const Text('Taille du texte'),
+                  subtitle: Slider(
+                    value: state.textScale,
+                    min: .9,
+                    max: 1.25,
+                    divisions: 7,
+                    onChanged: controller.setTextScale,
+                  ),
+                ),
+                const ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.language_rounded),
+                  title: Text('Langue'),
+                  trailing: Text('Français'),
+                ),
+                const ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.ios_share_rounded),
+                  title: Text('Exporter mes progrès'),
+                  trailing: Icon(Icons.chevron_right_rounded),
+                ),
+              ],
             ),
-            const SizedBox(height: 14),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              secondary: const Icon(Icons.dark_mode_rounded),
-              title: const Text('Mode sombre'),
-              value: state.themeMode == ThemeMode.dark,
-              onChanged: controller.toggleTheme,
-            ),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.text_fields_rounded),
-              title: const Text('Taille du texte'),
-              subtitle: Slider(
-                value: state.textScale,
-                min: .9,
-                max: 1.25,
-                divisions: 7,
-                onChanged: controller.setTextScale,
-              ),
-            ),
-            const ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.language_rounded),
-              title: Text('Langue'),
-              trailing: Text('Français'),
-            ),
-            const ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.ios_share_rounded),
-              title: Text('Exporter mes progrès'),
-              trailing: Icon(Icons.chevron_right_rounded),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     ),
   );
 }

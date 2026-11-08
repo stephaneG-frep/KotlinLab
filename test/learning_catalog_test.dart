@@ -15,6 +15,30 @@ void main() {
       }
     });
 
+    test('les parcours réécrits n’utilisent plus le texte générique', () {
+      // Ajouter ici chaque parcours une fois son contenu réécrit.
+      const rewrittenPaths = {'beginner'};
+      final generic = [
+        ...genericMistakes,
+        genericJava,
+        ...genericMemo,
+        genericChallenge,
+      ];
+      for (final path in learningPaths.where(
+        (path) => rewrittenPaths.contains(path.id),
+      )) {
+        for (final lesson in path.lessons) {
+          for (final text in generic) {
+            expect(
+              lesson.content.contains(text),
+              isFalse,
+              reason: '${lesson.id} contient encore : $text',
+            );
+          }
+        }
+      }
+    });
+
     test('chaque exercice possède une seule réponse valide', () {
       expect(exercises.length, greaterThanOrEqualTo(15));
       expect(exercises.map((item) => item.id).toSet().length, exercises.length);
