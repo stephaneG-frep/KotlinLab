@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 abstract final class AppColors {
   static const primary = Color(0xFF7F52FF);
@@ -15,6 +14,8 @@ abstract final class AppColors {
 }
 
 abstract final class AppTheme {
+  static const fontFamily = 'PlusJakartaSans';
+
   static ThemeData light(double scale) => _theme(Brightness.light, scale);
   static ThemeData dark(double scale) => _theme(Brightness.dark, scale);
 
@@ -28,11 +29,14 @@ abstract final class AppTheme {
       surface: dark ? const Color(0xFF1D1C24) : Colors.white,
       error: AppColors.error,
     );
-    final baseText = GoogleFonts.plusJakartaSansTextTheme(
-      dark ? ThemeData.dark().textTheme : ThemeData.light().textTheme,
-    );
+    // Police embarquée (assets/fonts) : aucun téléchargement au runtime.
+    final baseText =
+        (dark ? ThemeData.dark().textTheme : ThemeData.light().textTheme).apply(
+          fontFamily: fontFamily,
+        );
     return ThemeData(
       useMaterial3: true,
+      fontFamily: fontFamily,
       brightness: brightness,
       colorScheme: scheme,
       scaffoldBackgroundColor: dark

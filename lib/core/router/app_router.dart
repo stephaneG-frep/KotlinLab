@@ -13,10 +13,12 @@ import '../../features/projects/presentation/project_detail_screen.dart';
 import '../../features/projects/presentation/projects_screen.dart';
 import '../../features/quizzes/presentation/quick_quiz_screen.dart';
 import '../../shared/presentation/app_shell.dart';
+import '../../shared/presentation/not_found_screen.dart';
 import '../../shared/presentation/splash_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/splash',
+  errorBuilder: (_, _) => const NotFoundScreen(),
   routes: [
     GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
     StatefulShellRoute.indexedStack(
@@ -62,8 +64,13 @@ final appRouter = GoRouter(
         final id = state.pathParameters['id'];
         final lesson = learningPaths
             .expand((path) => path.lessons)
-            .firstWhere((item) => item.id == id);
-        return MaterialPage(child: LessonScreen(lesson: lesson));
+            .where((item) => item.id == id)
+            .firstOrNull;
+        return MaterialPage(
+          child: lesson == null
+              ? const NotFoundScreen(message: 'Cette leçon n’existe pas.')
+              : LessonScreen(lesson: lesson),
+        );
       },
     ),
     GoRoute(path: '/playground', builder: (_, _) => const PlaygroundScreen()),
@@ -74,10 +81,12 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/project/:id',
       builder: (_, state) {
-        final project = projects.firstWhere(
-          (item) => item.id == state.pathParameters['id'],
-        );
-        return ProjectDetailScreen(project: project);
+        final project = projects
+            .where((item) => item.id == state.pathParameters['id'])
+            .firstOrNull;
+        return project == null
+            ? const NotFoundScreen(message: 'Ce projet n’existe pas.')
+            : ProjectDetailScreen(project: project);
       },
     ),
   ],

@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/progress_calculator.dart';
 import '../../../shared/widgets/kit.dart';
+import '../../learning/data/learning_catalog.dart';
+import '../domain/badges.dart';
 import 'profile_controller.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -13,6 +16,10 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(profileControllerProvider);
     final controller = ref.read(profileControllerProvider.notifier);
+    final week = controller.lastSevenDays();
+    final weekMinutes = week.fold<int>(0, (sum, day) => sum + day.minutes);
+    final badges = badgesFor(profile);
+    final earnedBadges = badges.where((badge) => badge.earned).length;
     return ScreenBody(
       child: CustomScrollView(
         slivers: [
@@ -24,6 +31,7 @@ class ProfileScreen extends ConsumerWidget {
               IconButton.filledTonal(
                 onPressed: () => _settings(context, profile, controller),
                 icon: const Icon(Icons.settings_rounded),
+                tooltip: 'Préférences',
               ),
               const SizedBox(width: 16),
             ],
@@ -45,7 +53,7 @@ class ProfileScreen extends ConsumerWidget {
                     const SizedBox(width: 10),
                     StatPill(
                       icon: Icons.menu_book_rounded,
-                      value: '${profile.completedLessons}',
+                      value: '${profile.completedLessonIds.length}',
                       label: 'Leçons',
                       color: AppColors.primary,
                     ),
@@ -59,16 +67,19 @@ class ProfileScreen extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 28),
-                const SectionHeader(
+                SectionHeader(
                   title: 'Activité cette semaine',
-                  action: '4 h 46',
+                  action: '${weekMinutes ~/ 60} h ${weekMinutes % 60}',
                 ),
                 const SizedBox(height: 12),
-                const _ActivityChart(),
+                _ActivityChart(days: week),
                 const SizedBox(height: 28),
-                const SectionHeader(title: 'Badges', action: '12 / 50'),
+                SectionHeader(
+                  title: 'Badges',
+                  action: '$earnedBadges / ${badges.length}',
+                ),
                 const SizedBox(height: 12),
-                const _BadgeGrid(),
+                _BadgeGrid(badges: badges),
                 const SizedBox(height: 28),
                 SectionHeader(
                   title: 'Performance aux quiz',
@@ -81,7 +92,7 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 28),
                 const SectionHeader(title: 'Ta progression'),
                 const SizedBox(height: 12),
-                const _ProgressList(),
+                _ProgressList(completedIds: profile.completedLessonIds),
               ],
             ),
           ),
@@ -152,6 +163,7 @@ class ProfileScreen extends ConsumerWidget {
 class _ProfileHero extends StatelessWidget {
   const _ProfileHero({required this.profile});
   final ProfileState profile;
+  int get level => ProgressCalculator.levelForXp(profile.xp);
   @override
   Widget build(BuildContext context) => Card(
     child: Padding(
@@ -169,7 +181,7 @@ class _ProfileHero extends StatelessWidget {
             ),
             child: Center(
               child: Text(
-                profile.name.characters.first,
+                profile.displayName.characters.first,
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 32,
@@ -184,18 +196,21 @@ class _ProfileHero extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  profile.name,
+                  profile.displayName,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                const Text('Développeur curieux · Niveau 6'),
+                Text('${ProgressCalculator.levelTitle(level)} · Niveau $level'),
                 const SizedBox(height: 10),
-                const ProgressBar(value: .68),
+                ProgressBar(
+                  value: ProgressCalculator.levelProgress(profile.xp),
+                ),
                 const SizedBox(height: 5),
-                const Text(
-                  '760 XP avant le niveau 7',
-                  style: TextStyle(fontSize: 11, color: AppColors.muted),
+                Text(
+                  '${ProgressCalculator.xpUntilNextLevel(profile.xp)} XP '
+                  'avant le niveau ${level + 1}',
+                  style: const TextStyle(fontSize: 11, color: AppColors.muted),
                 ),
               ],
             ),
@@ -272,7 +287,11 @@ class _QuizMetric extends StatelessWidget {
 }
 
 class _ActivityChart extends StatelessWidget {
-  const _ActivityChart();
+  const _ActivityChart({required this.days});
+  final List<({DateTime day, int minutes})> days;
+
+  static const _weekdays = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+
   @override
   Widget build(BuildContext context) => Card(
     child: Padding(
@@ -281,7 +300,10 @@ class _ActivityChart extends StatelessWidget {
         height: 180,
         child: BarChart(
           BarChartData(
-            maxY: 60,
+            maxY: days
+                .map((day) => day.minutes)
+                .fold<int>(30, (max, minutes) => minutes > max ? minutes : max)
+                .toDouble(),
             alignment: BarChartAlignment.spaceAround,
             gridData: const FlGridData(show: false),
             borderData: FlBorderData(show: false),
@@ -302,14 +324,16 @@ class _ActivityChart extends StatelessWidget {
                   getTitlesWidget: (value, meta) => Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(
-                      const ['L', 'M', 'M', 'J', 'V', 'S', 'D'][value.toInt()],
+                      _weekdays[days[value.toInt()].day.weekday - 1],
                       style: const TextStyle(fontSize: 11),
                     ),
                   ),
                 ),
               ),
             ),
-            barGroups: [22, 38, 16, 48, 32, 55, 18]
+            barGroups: days
+                .map((day) => day.minutes)
+                .toList()
                 .asMap()
                 .entries
                 .map(
@@ -338,39 +362,45 @@ class _ActivityChart extends StatelessWidget {
 }
 
 class _BadgeGrid extends StatelessWidget {
-  const _BadgeGrid();
+  const _BadgeGrid({required this.badges});
+  final List<AchievementBadge> badges;
   @override
   Widget build(BuildContext context) {
-    const items = [
-      (Icons.local_fire_department_rounded, 'En feu', Color(0xFFFF7043)),
-      (Icons.code_rounded, 'Codeur', AppColors.primary),
-      (Icons.speed_rounded, 'Rapide', AppColors.secondary),
-      (Icons.lock_rounded, 'À venir', Colors.grey),
-    ];
     return Row(
-      children: items
+      children: badges
+          .map(
+            (badge) => (
+              badge.earned ? badge.icon : Icons.lock_rounded,
+              badge.label,
+              badge.earned ? badge.color : Colors.grey,
+              badge.hint,
+            ),
+          )
           .map(
             (item) => Expanded(
-              child: Column(
-                children: [
-                  Container(
-                    width: 54,
-                    height: 54,
-                    decoration: BoxDecoration(
-                      color: item.$3.withValues(alpha: .12),
-                      shape: BoxShape.circle,
+              child: Tooltip(
+                message: item.$4,
+                child: Column(
+                  children: [
+                    Container(
+                      width: 54,
+                      height: 54,
+                      decoration: BoxDecoration(
+                        color: item.$3.withValues(alpha: .12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(item.$1, color: item.$3),
                     ),
-                    child: Icon(item.$1, color: item.$3),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    item.$2,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
+                    const SizedBox(height: 6),
+                    Text(
+                      item.$2,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           )
@@ -380,36 +410,27 @@ class _BadgeGrid extends StatelessWidget {
 }
 
 class _ProgressList extends StatelessWidget {
-  const _ProgressList();
+  const _ProgressList({required this.completedIds});
+  final Set<String> completedIds;
   @override
   Widget build(BuildContext context) => Card(
     child: Padding(
       padding: const EdgeInsets.all(18),
       child: Column(
-        children: const [
-          _ProgressRow(
-            label: 'Fondations Kotlin',
-            value: .38,
-            color: AppColors.primary,
-          ),
-          SizedBox(height: 18),
-          _ProgressRow(
-            label: 'Kotlin orienté objet',
-            value: .08,
-            color: AppColors.secondary,
-          ),
-          SizedBox(height: 18),
-          _ProgressRow(
-            label: 'Kotlin avancé',
-            value: 0,
-            color: Color(0xFFFF8A65),
-          ),
-          SizedBox(height: 18),
-          _ProgressRow(
-            label: 'Android & Compose',
-            value: 0,
-            color: AppColors.success,
-          ),
+        children: [
+          for (final path in learningPaths) ...[
+            if (path != learningPaths.first) const SizedBox(height: 18),
+            _ProgressRow(
+              label: path.title,
+              value: ProgressCalculator.ratio(
+                path.lessons
+                    .where((lesson) => completedIds.contains(lesson.id))
+                    .length,
+                path.lessons.length,
+              ),
+              color: path.color,
+            ),
+          ],
         ],
       ),
     ),

@@ -3,10 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'app.dart';
+import 'features/profile/presentation/profile_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
-  await Hive.openBox<dynamic>('kotlin_lab_progress');
+  await Hive.openBox<dynamic>(progressBoxName);
   runApp(const ProviderScope(child: KotlinLabApp()));
 }

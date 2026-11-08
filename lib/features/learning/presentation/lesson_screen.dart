@@ -110,7 +110,11 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
                     : () {
                         final rewarded = ref
                             .read(profileControllerProvider.notifier)
-                            .completeLesson(widget.lesson.id, widget.lesson.xp);
+                            .completeLesson(
+                              widget.lesson.id,
+                              widget.lesson.xp,
+                              minutes: widget.lesson.duration,
+                            );
                         setState(() => progress = 1);
                         if (rewarded) {
                           ScaffoldMessenger.of(context).showSnackBar(

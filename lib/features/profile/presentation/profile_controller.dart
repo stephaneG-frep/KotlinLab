@@ -2,33 +2,63 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
 
+import '../../learning/data/learning_catalog.dart';
+
+const progressBoxName = 'kotlin_lab_progress';
+
+/// Version du format stocké dans la box Hive.
+/// 0 (absente) : ancien format avec compteurs de démonstration.
+/// 1 : journal d'activité quotidien, compteurs dérivés.
+const _schemaVersion = 1;
+
+/// Minutes comptabilisées pour une tentative d'exercice.
+const exerciseMinutes = 2;
+
+final progressBoxProvider = Provider<Box<dynamic>>(
+  (ref) => Hive.box<dynamic>(progressBoxName),
+);
+
+/// Horloge injectable pour pouvoir tester la série quotidienne.
+final clockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
+
+/// Clé de jour locale au format `aaaa-mm-jj`.
+String dayKey(DateTime date) =>
+    '${date.year.toString().padLeft(4, '0')}-'
+    '${date.month.toString().padLeft(2, '0')}-'
+    '${date.day.toString().padLeft(2, '0')}';
+
+DateTime _previousDay(DateTime date) =>
+    DateTime(date.year, date.month, date.day - 1);
+
 @immutable
 class ProfileState {
   const ProfileState({
-    this.name = 'Alex',
-    this.xp = 1240,
-    this.streak = 7,
-    this.studyMinutes = 286,
-    this.completedLessons = 12,
-    this.dailyMinutes = 18,
+    this.name = '',
+    this.xp = 0,
+    this.streak = 0,
+    this.studyMinutes = 0,
+    this.dailyMinutes = 0,
     this.dailyGoal = 25,
     this.themeMode = ThemeMode.light,
     this.textScale = 1,
     this.favoriteLessonIds = const {},
-    this.completedLessonIds = const {'intro', 'hello'},
+    this.completedLessonIds = const {},
     this.completedExerciseIds = const {},
     this.quizAttempts = 0,
     this.quizCorrectAnswers = 0,
     this.completedQuizIds = const {},
     this.startedProjectIds = const {},
+    this.activityLog = const {},
   });
 
   final String name;
   final int xp;
+
+  /// Dérivés de [activityLog] par le contrôleur.
   final int streak;
   final int studyMinutes;
-  final int completedLessons;
   final int dailyMinutes;
+
   final int dailyGoal;
   final ThemeMode themeMode;
   final double textScale;
@@ -40,12 +70,16 @@ class ProfileState {
   final Set<String> completedQuizIds;
   final Set<String> startedProjectIds;
 
+  /// Minutes d'étude par jour, indexées par [dayKey].
+  final Map<String, int> activityLog;
+
+  String get displayName => name.isEmpty ? 'Apprenant Kotlin' : name;
+
   ProfileState copyWith({
     String? name,
     int? xp,
     int? streak,
     int? studyMinutes,
-    int? completedLessons,
     int? dailyMinutes,
     int? dailyGoal,
     ThemeMode? themeMode,
@@ -57,12 +91,12 @@ class ProfileState {
     int? quizCorrectAnswers,
     Set<String>? completedQuizIds,
     Set<String>? startedProjectIds,
+    Map<String, int>? activityLog,
   }) => ProfileState(
     name: name ?? this.name,
     xp: xp ?? this.xp,
     streak: streak ?? this.streak,
     studyMinutes: studyMinutes ?? this.studyMinutes,
-    completedLessons: completedLessons ?? this.completedLessons,
     dailyMinutes: dailyMinutes ?? this.dailyMinutes,
     dailyGoal: dailyGoal ?? this.dailyGoal,
     themeMode: themeMode ?? this.themeMode,
@@ -74,44 +108,48 @@ class ProfileState {
     quizCorrectAnswers: quizCorrectAnswers ?? this.quizCorrectAnswers,
     completedQuizIds: completedQuizIds ?? this.completedQuizIds,
     startedProjectIds: startedProjectIds ?? this.startedProjectIds,
+    activityLog: activityLog ?? this.activityLog,
   );
 }
 
 class ProfileController extends Notifier<ProfileState> {
-  Box<dynamic> get _box => Hive.box<dynamic>('kotlin_lab_progress');
+  Box<dynamic> get _box => ref.read(progressBoxProvider);
+  DateTime _now() => ref.read(clockProvider)();
 
   @override
-  ProfileState build() => ProfileState(
-    name: _box.get('name', defaultValue: 'Alex') as String,
-    xp: _box.get('xp', defaultValue: 1240) as int,
-    streak: _box.get('streak', defaultValue: 7) as int,
-    studyMinutes: _box.get('studyMinutes', defaultValue: 286) as int,
-    completedLessons: _box.get('completedLessons', defaultValue: 12) as int,
-    dailyMinutes: _box.get('dailyMinutes', defaultValue: 18) as int,
-    dailyGoal: _box.get('dailyGoal', defaultValue: 25) as int,
-    themeMode: (_box.get('darkMode', defaultValue: false) as bool)
-        ? ThemeMode.dark
-        : ThemeMode.light,
-    textScale: _box.get('textScale', defaultValue: 1.0) as double,
-    favoriteLessonIds: Set<String>.from(
-      _box.get('favoriteLessonIds', defaultValue: <String>[]) as List,
-    ),
-    completedLessonIds: Set<String>.from(
-      _box.get('completedLessonIds', defaultValue: <String>['intro', 'hello'])
-          as List,
-    ),
-    completedExerciseIds: Set<String>.from(
-      _box.get('completedExerciseIds', defaultValue: <String>[]) as List,
-    ),
-    quizAttempts: _box.get('quizAttempts', defaultValue: 0) as int,
-    quizCorrectAnswers: _box.get('quizCorrectAnswers', defaultValue: 0) as int,
-    completedQuizIds: Set<String>.from(
-      _box.get('completedQuizIds', defaultValue: <String>[]) as List,
-    ),
-    startedProjectIds: Set<String>.from(
-      _box.get('startedProjectIds', defaultValue: <String>[]) as List,
-    ),
-  );
+  ProfileState build() {
+    _migrate();
+    final state = ProfileState(
+      name: _read('name', ''),
+      xp: _read('xp', 0),
+      dailyGoal: _read('dailyGoal', 25),
+      themeMode: _read('darkMode', false) ? ThemeMode.dark : ThemeMode.light,
+      textScale: _readDouble('textScale', 1),
+      favoriteLessonIds: _readIds('favoriteLessonIds'),
+      completedLessonIds: _readIds('completedLessonIds'),
+      completedExerciseIds: _readIds('completedExerciseIds'),
+      quizAttempts: _read('quizAttempts', 0),
+      quizCorrectAnswers: _read('quizCorrectAnswers', 0),
+      completedQuizIds: _readIds('completedQuizIds'),
+      startedProjectIds: _readIds('startedProjectIds'),
+      activityLog: _readLog(),
+    );
+    return _withDerivedActivity(state);
+  }
+
+  /// Recalcule la série et les minutes du jour (changement de date).
+  void refreshDay() => state = _withDerivedActivity(state);
+
+  /// Minutes étudiées chacun des 7 derniers jours, du plus ancien à aujourd'hui.
+  List<({DateTime day, int minutes})> lastSevenDays() {
+    var day = _now();
+    final days = <({DateTime day, int minutes})>[];
+    for (var i = 0; i < 7; i++) {
+      days.insert(0, (day: day, minutes: state.activityLog[dayKey(day)] ?? 0));
+      day = _previousDay(day);
+    }
+    return days;
+  }
 
   void toggleTheme(bool dark) {
     state = state.copyWith(themeMode: dark ? ThemeMode.dark : ThemeMode.light);
@@ -128,23 +166,12 @@ class ProfileController extends Notifier<ProfileState> {
     _box.put('dailyGoal', value);
   }
 
-  bool completeLesson(String lessonId, int xp) {
+  bool completeLesson(String lessonId, int xp, {required int minutes}) {
     if (state.completedLessonIds.contains(lessonId)) return false;
     final completedIds = {...state.completedLessonIds, lessonId};
-    state = state.copyWith(
-      xp: state.xp + xp,
-      completedLessons: state.completedLessons + 1,
-      studyMinutes: state.studyMinutes + 12,
-      dailyMinutes: state.dailyMinutes + 12,
-      completedLessonIds: completedIds,
-    );
-    _box.putAll({
-      'xp': state.xp,
-      'completedLessons': state.completedLessons,
-      'studyMinutes': state.studyMinutes,
-      'dailyMinutes': state.dailyMinutes,
-      'completedLessonIds': completedIds.toList(),
-    });
+    state = state.copyWith(xp: state.xp + xp, completedLessonIds: completedIds);
+    _recordActivity(minutes);
+    _box.putAll({'xp': state.xp, 'completedLessonIds': completedIds.toList()});
     return true;
   }
 
@@ -169,6 +196,7 @@ class ProfileController extends Notifier<ProfileState> {
       quizAttempts: state.quizAttempts + 1,
       quizCorrectAnswers: state.quizCorrectAnswers + (correct ? 1 : 0),
     );
+    _recordActivity(exerciseMinutes);
     _box.putAll({
       'xp': state.xp,
       'completedExerciseIds': completed.toList(),
@@ -178,6 +206,7 @@ class ProfileController extends Notifier<ProfileState> {
     return reward > 0;
   }
 
+  /// Un quiz compte une minute par question.
   int completeQuiz(String quizId, {required int score, required int total}) {
     final alreadyRewarded = state.completedQuizIds.contains(quizId);
     final quizIds = {...state.completedQuizIds, quizId};
@@ -188,6 +217,7 @@ class ProfileController extends Notifier<ProfileState> {
       quizCorrectAnswers: state.quizCorrectAnswers + score,
       completedQuizIds: quizIds,
     );
+    _recordActivity(total);
     _box.putAll({
       'xp': state.xp,
       'quizAttempts': state.quizAttempts,
@@ -201,6 +231,95 @@ class ProfileController extends Notifier<ProfileState> {
     final projects = {...state.startedProjectIds, projectId};
     state = state.copyWith(startedProjectIds: projects);
     _box.put('startedProjectIds', projects.toList());
+  }
+
+  // --- Activité quotidienne -------------------------------------------------
+
+  void _recordActivity(int minutes) {
+    final today = dayKey(_now());
+    final log = {
+      ...state.activityLog,
+      today: (state.activityLog[today] ?? 0) + minutes,
+    };
+    state = _withDerivedActivity(state.copyWith(activityLog: log));
+    _box.put('activityLog', log);
+  }
+
+  ProfileState _withDerivedActivity(ProfileState state) {
+    final log = state.activityLog;
+    final today = _now();
+    var day = today;
+    // La série reste active tant que la journée d'aujourd'hui n'est pas finie.
+    if (!log.containsKey(dayKey(day))) day = _previousDay(day);
+    var streak = 0;
+    while (log.containsKey(dayKey(day))) {
+      streak++;
+      day = _previousDay(day);
+    }
+    return state.copyWith(
+      streak: streak,
+      dailyMinutes: log[dayKey(today)] ?? 0,
+      studyMinutes: log.values.fold<int>(0, (sum, minutes) => sum + minutes),
+    );
+  }
+
+  // --- Persistance ----------------------------------------------------------
+
+  /// Les anciennes versions partaient de valeurs de démonstration (1240 XP,
+  /// série de 7 jours…). On conserve préférences et éléments réellement
+  /// terminés, on supprime les compteurs factices et on recalcule les XP.
+  void _migrate() {
+    if (_read('schemaVersion', 0) >= _schemaVersion) return;
+    if (_box.isNotEmpty) {
+      final lessonIds = _readIds('completedLessonIds');
+      final exerciseIds = _readIds('completedExerciseIds');
+      final xp =
+          learningPaths
+              .expand((path) => path.lessons)
+              .where((lesson) => lessonIds.contains(lesson.id))
+              .fold<int>(0, (sum, lesson) => sum + lesson.xp) +
+          exercises
+              .where((exercise) => exerciseIds.contains(exercise.id))
+              .fold<int>(0, (sum, exercise) => sum + exercise.xp);
+      // Les XP de quiz ne sont pas recalculables : on libère les quiz
+      // pour qu'ils puissent de nouveau rapporter des XP.
+      _box.deleteAll([
+        'streak',
+        'studyMinutes',
+        'dailyMinutes',
+        'completedLessons',
+        'completedQuizIds',
+      ]);
+      _box.put('xp', xp);
+    }
+    _box.put('schemaVersion', _schemaVersion);
+  }
+
+  /// Lecture tolérante : une valeur absente ou d'un type inattendu
+  /// est remplacée par [fallback] au lieu de faire planter l'application.
+  T _read<T>(String key, T fallback) {
+    final value = _box.get(key);
+    return value is T ? value : fallback;
+  }
+
+  double _readDouble(String key, double fallback) {
+    final value = _box.get(key);
+    return value is num ? value.toDouble() : fallback;
+  }
+
+  Set<String> _readIds(String key) {
+    final value = _box.get(key);
+    return value is List ? value.whereType<String>().toSet() : <String>{};
+  }
+
+  Map<String, int> _readLog() {
+    final value = _box.get('activityLog');
+    if (value is! Map) return const {};
+    return {
+      for (final entry in value.entries)
+        if (entry.key is String && entry.value is int)
+          entry.key as String: entry.value as int,
+    };
   }
 }
 

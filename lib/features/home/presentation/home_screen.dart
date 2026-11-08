@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/progress_calculator.dart';
 import '../../../shared/widgets/kit.dart';
 import '../../learning/data/learning_catalog.dart';
 import '../../learning/domain/learning_models.dart';
+import '../../profile/domain/badges.dart';
 import '../../profile/presentation/profile_controller.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -73,12 +75,13 @@ class HomeScreen extends ConsumerWidget {
                 const SizedBox(height: 12),
                 const _QuickTools(),
                 const SizedBox(height: 28),
-                const SectionHeader(
-                  title: 'Tes derniers badges',
+                SectionHeader(
+                  title: 'Tes badges',
                   action: 'Tout voir',
+                  onTap: () => context.go('/profile'),
                 ),
                 const SizedBox(height: 12),
-                const _Badges(),
+                _Badges(badges: badgesFor(profile).take(3).toList()),
                 const SizedBox(height: 26),
                 const _QuoteCard(),
               ],
@@ -137,7 +140,7 @@ class _TopBar extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Bonjour $name 👋',
+              name.isEmpty ? 'Bonjour 👋' : 'Bonjour $name 👋',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             Text(
@@ -208,7 +211,11 @@ class _WelcomeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final progress = profile.dailyMinutes / profile.dailyGoal;
+    final progress = ProgressCalculator.ratio(
+      profile.dailyMinutes,
+      profile.dailyGoal,
+    );
+    final level = ProgressCalculator.levelForXp(profile.xp);
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
@@ -249,9 +256,10 @@ class _WelcomeCard extends StatelessWidget {
                   color: Colors.white.withValues(alpha: .16),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Text(
-                  'NIVEAU 6 · DÉVELOPPEUR CURIEUX',
-                  style: TextStyle(
+                child: Text(
+                  'NIVEAU $level · '
+                  '${ProgressCalculator.levelTitle(level).toUpperCase()}',
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
@@ -466,20 +474,25 @@ class _QuickTools extends StatelessWidget {
 }
 
 class _Badges extends StatelessWidget {
-  const _Badges();
+  const _Badges({required this.badges});
+  final List<AchievementBadge> badges;
   @override
   Widget build(BuildContext context) {
-    const badges = [
-      (Icons.local_fire_department_rounded, Color(0xFFFF7043), '7 jours'),
-      (Icons.code_rounded, AppColors.primary, 'Codeur'),
-      (Icons.auto_awesome_rounded, AppColors.secondary, 'Curieux'),
-    ];
+    final items = badges
+        .map(
+          (badge) => (
+            badge.earned ? badge.icon : Icons.lock_rounded,
+            badge.earned ? badge.color : Colors.grey,
+            badge.earned ? badge.label : badge.hint,
+          ),
+        )
+        .toList();
     return Row(
-      children: badges
+      children: items
           .map(
             (badge) => Expanded(
               child: Padding(
-                padding: EdgeInsets.only(right: badge == badges.last ? 0 : 10),
+                padding: EdgeInsets.only(right: badge == items.last ? 0 : 10),
                 child: Card(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 17),
@@ -497,6 +510,7 @@ class _Badges extends StatelessWidget {
                         const SizedBox(height: 8),
                         Text(
                           badge.$3,
+                          textAlign: TextAlign.center,
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,

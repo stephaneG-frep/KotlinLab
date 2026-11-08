@@ -13,12 +13,9 @@ dependencies:
   go_router: ^17.0.0
   hive: ^2.2.3
   hive_flutter: ^1.1.0
-  shared_preferences: ^2.5.3
   flutter_animate: ^4.5.2
-  google_fonts: ^6.2.1
   fl_chart: ^1.0.0
   flutter_markdown: ^0.7.7
-  uuid: ^4.5.1
 
 dev_dependencies:
   flutter_test:
@@ -27,3 +24,16 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  fonts:
+    - family: PlusJakartaSans
+      fonts:
+        - asset: assets/fonts/PlusJakartaSans-Regular.ttf
+        - asset: assets/fonts/PlusJakartaSans-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/PlusJakartaSans-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/PlusJakartaSans-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/PlusJakartaSans-ExtraBold.ttf
+          weight: 800
