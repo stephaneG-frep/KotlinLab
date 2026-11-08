@@ -524,6 +524,38 @@ En Kotlin, des fonctions de premier niveau et les fonctions de collection suffis
             'class BankAccount(val owner: String, initial: Double) {\n    var balance = initial\n        private set\n    fun deposit(amount: Double) {\n        require(amount > 0)\n        balance += amount\n    }\n}',
         practice:
             'Protège les invariants dans la classe plutôt que de laisser chaque appelant les vérifier.',
+        mistakes: [
+          r'''Exposer `var balance` en public : n’importe qui peut écrire `account.balance = -500.0`. `private set` garde la lecture publique et réserve l’écriture à la classe.''',
+          r'''Confondre paramètre et propriété : sans `val`, `initial` n’est qu’un paramètre du constructeur, inaccessible depuis les méthodes.''',
+          r'''Écrire `new BankAccount(…)` : Kotlin n’a pas de mot-clé `new`.''',
+        ],
+        java:
+            r'''En Java, il faut déclarer les champs, un constructeur qui les affecte, puis des getters :
+
+```java
+public class BankAccount {
+    private final String owner;
+    private double balance;
+
+    public BankAccount(String owner, double initial) {
+        this.owner = owner;
+        this.balance = initial;
+    }
+
+    public String getOwner() { return owner; }
+    public double getBalance() { return balance; }
+}
+```
+
+Une propriété Kotlin regroupe champ, getter et setter, et le constructeur principal tient dans l’en-tête de la classe.''',
+        memo: [
+          r'''`class Nom(val a: Type)` déclare et initialise une propriété en une fois.''',
+          r'''Classes et membres sont `public` et `final` par défaut.''',
+          r'''`private set` : lecture publique, écriture réservée à la classe.''',
+          r'''`require(condition) { "message" }` lève une `IllegalArgumentException` si la condition est fausse.''',
+        ],
+        challenge:
+            r'''Ajoute une méthode `withdraw(amount: Double)` qui refuse un montant négatif ou supérieur au solde, avec un message d’erreur explicite. Écris trois appels, dont un qui doit échouer, et vérifie le message obtenu.''',
         icon: Icons.category_rounded,
         level: 'Intermédiaire',
         duration: 20,
@@ -539,6 +571,23 @@ En Kotlin, des fonctions de premier niveau et les fonctions de collection suffis
             'class User(val name: String, val age: Int) {\n    init {\n        require(name.isNotBlank())\n        require(age >= 0)\n    }\n}',
         practice:
             'Un objet valide dès sa construction réduit les vérifications ailleurs.',
+        mistakes: [
+          r'''Valider les données après la création : l’objet invalide a déjà circulé. `init` vérifie tout dès la construction.''',
+          r'''Multiplier les constructeurs secondaires : des valeurs par défaut dans le constructeur principal suffisent presque toujours.''',
+          r'''Utiliser une propriété dans `init` avant sa déclaration : initialiseurs et blocs `init` s’exécutent dans l’ordre où ils apparaissent dans la classe.''',
+        ],
+        java:
+            r'''Java demande un constructeur par combinaison de paramètres, ou un pattern Builder.
+
+En Kotlin, `class User(val name: String, val age: Int = 0)` accepte à la fois `User("Ada")` et `User("Ada", 36)`, et les arguments nommés rendent le Builder rarement nécessaire.''',
+        memo: [
+          r'''Le constructeur principal se place dans l’en-tête de la classe.''',
+          r'''`init { … }` s’exécute à chaque création, dans l’ordre de déclaration.''',
+          r'''Constructeur secondaire : `constructor(…) : this(…)`.''',
+          r'''Paramètres par défaut et arguments nommés évitent les surcharges.''',
+        ],
+        challenge:
+            r'''Crée une classe `Temperature(val celsius: Double)` qui refuse les valeurs inférieures à -273.15 dans `init`. Ajoute une propriété calculée `val fahrenheit get() = celsius * 9 / 5 + 32` et teste-la avec 0 et 100.''',
         icon: Icons.build_circle_rounded,
         level: 'Intermédiaire',
       ),
@@ -551,6 +600,26 @@ En Kotlin, des fonctions de premier niveau et les fonctions de collection suffis
         code:
             'data class User(val id: Long, val name: String)\nval ada = User(1, "Ada")\nval updated = ada.copy(name = "Ada Lovelace")',
         practice: 'Réserve les data classes aux valeurs et modèles de données.',
+        mistakes: [
+          r'''Déclarer une propriété dans le corps de la classe en pensant qu’elle compte : seules les propriétés du constructeur principal participent à `equals`, `hashCode`, `toString` et `copy`.''',
+          r'''Mettre des `var` dans une data class utilisée comme clé de `Map` ou élément de `Set` : modifier une propriété change le `hashCode` et l’objet devient introuvable.''',
+          r'''Croire que `copy` fait une copie profonde : les objets référencés, comme une liste, sont partagés entre l’original et la copie.''',
+        ],
+        java: r'''Depuis Java 16, les `record` sont proches des data classes :
+
+```java
+record User(long id, String name) {}
+```
+
+Les records n’ont pas d’équivalent de `copy` : pour changer un champ, il faut rappeler le constructeur avec toutes les valeurs.''',
+        memo: [
+          r'''`data class` génère `equals`, `hashCode`, `toString`, `copy` et `componentN`.''',
+          r'''`copy(name = …)` crée une variante en changeant seulement certaines propriétés.''',
+          r'''Déstructuration : `val (id, name) = user`.''',
+          r'''Préfère des propriétés `val`.''',
+        ],
+        challenge:
+            r'''Modélise un `Product(val id: Long, val name: String, val price: Double)`. Crée une liste de trois produits, applique une remise de 10 % à tous avec `map { it.copy(…) }` et affiche le résultat. Vérifie que deux produits identiques sont égaux avec `==`.''',
         icon: Icons.inventory_2_rounded,
         level: 'Intermédiaire',
       ),
@@ -564,6 +633,24 @@ En Kotlin, des fonctions de premier niveau et les fonctions de collection suffis
             'sealed interface Result {\n    data class Success(val value: String) : Result\n    data class Failure(val message: String) : Result\n}\nfun label(result: Result) = when (result) {\n    is Result.Success -> result.value\n    is Result.Failure -> result.message\n}',
         practice:
             'Utilise une hiérarchie sealed pour rendre les états impossibles difficiles à représenter.',
+        mistakes: [
+          r'''Ajouter `else` à un `when` sur une hiérarchie sealed : le compilateur ne te prévient plus quand un nouveau cas apparaît.''',
+          r'''Utiliser un enum alors que chaque cas porte des données différentes : c’est le rôle d’une hiérarchie sealed.''',
+          r'''Représenter un état avec plusieurs booléens (`isLoading`, `hasError`…) : des combinaisons impossibles deviennent représentables.''',
+        ],
+        java:
+            r'''Les enums sont très proches dans les deux langages. Java 17 a ajouté les `sealed interface … permits …`, et Java 21 le pattern matching dans `switch`.
+
+Kotlin offre la même idée avec `when`, les smart casts et une syntaxe plus courte : les sous-types n’ont pas besoin d’être listés avec `permits`.''',
+        memo: [
+          r'''`enum class Direction { NORTH, SOUTH }` : un ensemble fixe de constantes.''',
+          r'''`Direction.entries` liste toutes les valeurs.''',
+          r'''`sealed interface` : des sous-types connus à la compilation, chacun avec ses propres données.''',
+          r'''`data object` convient aux cas sans données, comme `Loading`.''',
+          r'''Un `when` sur un type sealed est exhaustif : pas besoin de `else`.''',
+        ],
+        challenge:
+            r'''Modélise l’état d’un écran avec `sealed interface UiState` : `data object Loading`, `Success(val items: List<String>)` et `Error(val message: String)`. Écris `render(state)` qui renvoie un texte pour chaque cas, sans `else`. Ajoute ensuite un état `Empty` et observe l’erreur du compilateur.''',
         icon: Icons.account_tree_rounded,
         level: 'Intermédiaire',
         duration: 20,
@@ -578,6 +665,27 @@ En Kotlin, des fonctions de premier niveau et les fonctions de collection suffis
         code:
             'interface Repository<T> {\n    fun findAll(): List<T>\n    fun save(value: T)\n}\nclass MemoryRepository<T> : Repository<T> {\n    private val values = mutableListOf<T>()\n    override fun findAll() = values.toList()\n    override fun save(value: T) { values += value }\n}',
         practice: 'Crée une abstraction lorsqu’elle exprime un vrai contrat.',
+        mistakes: [
+          r'''Créer une interface pour chaque classe « au cas où » : une abstraction qui n’a qu’une implémentation ajoute du code sans valeur.''',
+          r'''Oublier `override` : en Kotlin, il est obligatoire pour implémenter un membre d’interface.''',
+          r'''Renvoyer la liste interne mutable : ici, `findAll()` renvoie une copie avec `toList()` pour que personne ne modifie l’état depuis l’extérieur.''',
+        ],
+        java:
+            r'''Comme en Java 8 et plus, une interface Kotlin peut contenir des méthodes avec une implémentation par défaut. Elle peut aussi déclarer des propriétés abstraites, comme `val name: String`.
+
+Kotlin sait en plus déléguer toute une implémentation avec `by` :
+
+```kotlin
+class LoggedRepository<T>(private val inner: Repository<T>) : Repository<T> by inner
+```''',
+        memo: [
+          r'''Une `interface` est un contrat, sans état stocké.''',
+          r'''`override` est obligatoire pour chaque membre implémenté.''',
+          r'''Une classe peut implémenter plusieurs interfaces.''',
+          r'''`by` délègue l’implémentation à un autre objet.''',
+        ],
+        challenge:
+            r'''Écris une interface `Notifier` avec `fun send(message: String)`, puis deux implémentations : `ConsoleNotifier` qui affiche le message et `FakeNotifier` qui le stocke dans une liste. Écris une fonction qui reçoit un `Notifier`, et utilise `FakeNotifier` pour vérifier qu’elle envoie le bon message.''',
         icon: Icons.handshake_rounded,
         level: 'Intermédiaire',
       ),
@@ -591,6 +699,23 @@ En Kotlin, des fonctions de premier niveau et les fonctions de collection suffis
             'abstract class Shape { abstract fun area(): Double }\nclass Circle(private val radius: Double) : Shape() {\n    override fun area() = Math.PI * radius * radius\n}',
         practice:
             'Préfère la composition sauf lorsqu’une vraie relation « est un » existe.',
+        mistakes: [
+          r'''Oublier `open` : hériter d’une classe qui n’est pas `open` ne compile pas.''',
+          r'''Construire de longues hiérarchies pour partager du code : la composition, c’est-à-dire une propriété qui fait le travail, est plus souple.''',
+          r'''Appeler une fonction `open` depuis le constructeur de la classe parente : la sous-classe n’est pas encore initialisée à ce moment-là.''',
+        ],
+        java:
+            r'''En Java, toute classe est héritable sauf si elle est `final`, et `@Override` est facultatif. Kotlin fait le choix inverse : tout est `final` par défaut et `override` est obligatoire.
+
+L’appel au constructeur parent se fait directement dans l’en-tête : `class Circle(…) : Shape()`.''',
+        memo: [
+          r'''`open class` autorise l’héritage ; `open fun` autorise la redéfinition.''',
+          r'''`abstract` : classe non instanciable, dont certains membres sont à implémenter.''',
+          r'''`override` est obligatoire ; `final override` bloque les redéfinitions suivantes.''',
+          r'''`super.methode()` appelle l’implémentation parente.''',
+        ],
+        challenge:
+            r'''Ajoute `Rectangle(width, height)` et `Square(side)` à la hiérarchie `Shape`, puis calcule l’aire totale d’une `List<Shape>` avec `sumOf { it.area() }`. Réfléchis ensuite : `Square` doit-il hériter de `Rectangle` ?''',
         icon: Icons.polyline_rounded,
         level: 'Intermédiaire',
       ),
@@ -604,6 +729,24 @@ En Kotlin, des fonctions de premier niveau et les fonctions de collection suffis
             r'fun greeting(name: String?): String {\n    val clean = name?.trim()?.takeIf { it.isNotEmpty() }\n    return "Bonjour, ${clean ?: "inconnu"}"\n}',
         practice:
             'Évite !! : transforme, filtre ou fournis une valeur de remplacement.',
+        mistakes: [
+          r'''Utiliser `!!` pour faire taire le compilateur : c’est une `NullPointerException` qui attend son heure.''',
+          r'''Tester `if (x != null)` sur une propriété `var` : le smart cast est impossible car la valeur peut changer entre le test et l’usage. Copie-la dans un `val` local ou utilise `?.let`.''',
+          r'''Rendre tout nullable par précaution : chaque `?` impose de gérer l’absence partout où la valeur est utilisée.''',
+        ],
+        java:
+            r'''En Java, toute référence peut être `null` et l’erreur n’apparaît qu’à l’exécution. `@Nullable` et `Optional` aident, mais restent facultatifs.
+
+En Kotlin, la nullabilité fait partie du type : une `String` ne peut jamais contenir `null`. Attention aux valeurs venant de Java : leur type « plateforme » (`String!`) n’est pas vérifié par Kotlin.''',
+        memo: [
+          r'''`String?` accepte `null`, `String` jamais.''',
+          r'''`?.` n’appelle la fonction que si la valeur n’est pas nulle.''',
+          r'''`?:` fournit une valeur de repli.''',
+          r'''`?.let { … }` n’exécute le bloc que si la valeur existe.''',
+          r'''`takeIf { … }` renvoie `null` si la condition est fausse.''',
+        ],
+        challenge:
+            r'''Écris `parseAge(raw: String?): Int?` qui renvoie `null` pour une entrée nulle, vide, non numérique ou hors de l’intervalle 0..150. N’utilise ni `!!` ni `if (raw == null)`. Indice : `?.trim()`, `toIntOrNull()` et `takeIf`.''',
         icon: Icons.shield_rounded,
         level: 'Intermédiaire',
         duration: 22,
@@ -619,6 +762,23 @@ En Kotlin, des fonctions de premier niveau et les fonctions de collection suffis
             'fun String.toSlug(): String = lowercase()\n    .trim()\n    .replace(Regex("[^a-z0-9]+"), "-")\n    .trim(\'-\')\nprintln("Kotlin Facile".toSlug())',
         practice:
             'Place les extensions près du domaine et évite les utilitaires vagues.',
+        mistakes: [
+          r'''Croire qu’une extension accède aux membres `private` : elle n’utilise que l’API publique du type.''',
+          r'''Croire qu’une extension se redéfinit comme une méthode : elle est choisie selon le type déclaré à la compilation, pas selon le type réel de l’objet.''',
+          r'''Créer des extensions trop générales sur `Any` ou `String` : elles encombrent l’autocomplétion dans tout le projet.''',
+        ],
+        java:
+            r'''Java n’a pas d’extensions : on écrit des classes utilitaires statiques, comme `StringUtils.toSlug(text)`.
+
+C’est d’ailleurs ainsi qu’une extension Kotlin est compilée : une fonction statique qui reçoit l’objet en premier paramètre. Kotlin permet simplement de l’appeler comme une méthode.''',
+        memo: [
+          r'''`fun Type.nom(): Retour` ; dans le corps, `this` désigne l’objet.''',
+          r'''Une extension n’accède qu’aux membres publics.''',
+          r'''Si une méthode membre a la même signature, c’est le membre qui l’emporte.''',
+          r'''Les propriétés d’extension existent aussi : `val String.wordCount get() = split(" ").size`.''',
+        ],
+        challenge:
+            r'''Écris `fun Int.isEven(): Boolean` et `fun List<Int>.median(): Double?`, qui renvoie `null` pour une liste vide. Teste la médiane sur une liste de taille paire et sur une liste de taille impaire.''',
         icon: Icons.extension_rounded,
         level: 'Intermédiaire',
       ),
@@ -632,6 +792,24 @@ En Kotlin, des fonctions de premier niveau et les fonctions de collection suffis
             r'val user = User(1, "Ada").also {\n    println("Création de $it")\n}\nval label = user.run { "#$id — $name" }',
         practice:
             'Choisis une scope function pour sa sémantique et évite de les imbriquer.',
+        mistakes: [
+          r'''Imbriquer plusieurs `let` ou `apply` : on ne sait plus à quoi `it` et `this` font référence.''',
+          r'''Utiliser `apply` en attendant le résultat du bloc : `apply` renvoie l’objet, pas la dernière expression.''',
+          r'''Remplacer chaque `if` par `?.let` : un simple `if` est souvent plus lisible.''',
+        ],
+        java:
+            r'''Java n’a pas d’équivalent direct : on passe par des variables temporaires ou des chaînes de setters.
+
+En Kotlin, `apply` remplace souvent un builder, et `also` permet d’insérer une journalisation au milieu d’une expression sans la casser.''',
+        memo: [
+          r'''`let` : l’objet est `it`, renvoie le résultat du bloc.''',
+          r'''`run` : l’objet est `this`, renvoie le résultat du bloc.''',
+          r'''`apply` : l’objet est `this`, renvoie l’objet (configuration).''',
+          r'''`also` : l’objet est `it`, renvoie l’objet (effet secondaire).''',
+          r'''`with(objet) { … }` : comme `run`, mais sans appel en chaîne.''',
+        ],
+        challenge:
+            r'''Crée un `StringBuilder` configuré avec `apply` (trois `append`), journalise son contenu avec `also`, puis calcule sa longueur avec `let`. Pour chaque appel, explique ce qui est renvoyé.''',
         icon: Icons.center_focus_strong_rounded,
         level: 'Intermédiaire',
       ),
@@ -645,6 +823,27 @@ En Kotlin, des fonctions de premier niveau et les fonctions de collection suffis
             'fun parsePort(raw: String): Result<Int> = runCatching {\n    raw.toInt().also { require(it in 1..65535) }\n}\nparsePort("8080").onSuccess(::println)',
         practice:
             'Ne capture pas Exception sans stratégie : transforme, journalise ou propage avec du contexte.',
+        mistakes: [
+          r'''Capturer `Exception` puis l’ignorer : l’erreur disparaît sans laisser de trace.''',
+          r'''Utiliser des exceptions pour le flux normal, par exemple pour savoir si un texte est un nombre : `toIntOrNull()` est plus simple.''',
+          r'''Oublier que `runCatching` capture aussi les `CancellationException` des coroutines : dans du code suspendu, cela peut empêcher une annulation propre.''',
+        ],
+        java:
+            r'''Java distingue les exceptions vérifiées, à déclarer avec `throws`, des exceptions non vérifiées. Kotlin n’a pas d’exceptions vérifiées : aucune signature ne les déclare.
+
+`try` est aussi une expression :
+
+```kotlin
+val port = try { raw.toInt() } catch (e: NumberFormatException) { 8080 }
+```''',
+        memo: [
+          r'''`try { … } catch (e: Type) { … } finally { … }` ; `try` renvoie une valeur.''',
+          r'''`require` (argument invalide) et `check` (état invalide) lèvent des exceptions claires.''',
+          r'''`runCatching { … }` renvoie un `Result<T>`.''',
+          r'''Sur un `Result` : `getOrNull()`, `getOrDefault()`, `onSuccess`, `onFailure`, `map`, `fold`.''',
+        ],
+        challenge:
+            r'''Écris `readConfig(lines: List<String>): Result<Map<String, String>>` qui lit des lignes au format `clé=valeur` et échoue avec un message clair sur une ligne mal formée. Affiche le résultat avec `fold(onSuccess = …, onFailure = …)`.''',
         icon: Icons.warning_amber_rounded,
         level: 'Intermédiaire',
         duration: 20,

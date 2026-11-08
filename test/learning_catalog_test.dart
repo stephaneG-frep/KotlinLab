@@ -17,7 +17,7 @@ void main() {
 
     test('les parcours réécrits n’utilisent plus le texte générique', () {
       // Ajouter ici chaque parcours une fois son contenu réécrit.
-      const rewrittenPaths = {'beginner'};
+      const rewrittenPaths = {'beginner', 'intermediate'};
       final generic = [
         ...genericMistakes,
         genericJava,

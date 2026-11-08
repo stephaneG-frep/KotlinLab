@@ -83,10 +83,15 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
                       p: Theme.of(
                         context,
                       ).textTheme.bodyLarge?.copyWith(height: 1.65),
-                      code: const TextStyle(
+                      // Couleur adaptée au thème : contraste de 9,9:1 en
+                      // sombre et 6,2:1 en clair sur le fond des blocs.
+                      code: TextStyle(
                         fontFamily: 'monospace',
-                        color: AppColors.primary,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0xFFD4C6FF)
+                            : AppColors.primaryDark,
                         fontSize: 14,
+                        height: 1.5,
                       ),
                       codeblockDecoration: BoxDecoration(
                         color: Theme.of(context).brightness == Brightness.dark
