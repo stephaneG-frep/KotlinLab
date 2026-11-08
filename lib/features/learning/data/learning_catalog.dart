@@ -867,6 +867,24 @@ val port = try { raw.toInt() } catch (e: NumberFormatException) { 8080 }
         code:
             'suspend fun loadDashboard(): Dashboard = coroutineScope {\n    val user = async { loadUser() }\n    val news = async { loadNews() }\n    Dashboard(user.await(), news.await())\n}',
         practice: 'N’utilise pas GlobalScope pour le travail applicatif.',
+        mistakes: [
+          r'''Lancer avec `GlobalScope.launch` : la coroutine n’est liée à rien, elle continue même quand l’écran qui l’a lancée a disparu, et ses erreurs passent inaperçues.''',
+          r'''Appeler une fonction bloquante (`Thread.sleep`, lecture de fichier…) sur `Dispatchers.Main` : l’interface se fige. Utilise `delay` ou `withContext(Dispatchers.IO)`.''',
+          r'''Attraper `CancellationException` sans la relancer : la coroutine ne peut plus être annulée proprement.''',
+        ],
+        java:
+            r'''En Java, on passe par des threads, des `ExecutorService` ou des `CompletableFuture` enchaînés avec `thenApply` et `thenCombine`.
+
+Les coroutines permettent d’écrire le même code asynchrone de façon séquentielle, et un seul thread peut porter des milliers de coroutines suspendues. Les threads virtuels de Java 21 répondent à une partie du même besoin.''',
+        memo: [
+          r'''Une `suspend fun` peut se suspendre sans bloquer le thread.''',
+          r'''`launch` lance sans résultat ; `async` puis `await()` lance avec un résultat.''',
+          r'''`coroutineScope { }` attend toutes ses coroutines enfants ; si l’une échoue, les autres sont annulées.''',
+          r'''`withContext(Dispatchers.IO) { }` déplace un travail bloquant hors du thread principal.''',
+          r'''Sur Android : `viewModelScope` et `lifecycleScope`.''',
+        ],
+        challenge:
+            r'''Écris `suspend fun fetchAll(ids: List<Int>): List<String>` qui charge chaque id en parallèle avec `async`, en simulant le chargement avec `delay(100)`. Mesure la durée avec `measureTimeMillis` : elle doit rester proche de 100 ms, quel que soit le nombre d’ids.''',
         icon: Icons.sync_rounded,
         level: 'Avancé',
         duration: 30,
@@ -882,6 +900,23 @@ val port = try { raw.toInt() } catch (e: NumberFormatException) { 8080 }
             'fun search(query: Flow<String>) = query\n    .debounce(300)\n    .distinctUntilChanged()\n    .flatMapLatest(repository::search)',
         practice:
             'Collecte un Flow dans un scope contrôlé et annule les travaux obsolètes.',
+        mistakes: [
+          r'''Oublier que rien ne se passe sans `collect` : un Flow froid n’exécute son bloc qu’au moment de la collecte.''',
+          r'''Collecter un Flow dans `lifecycleScope.launch` sans `repeatOnLifecycle` : la collecte continue quand l’app passe en arrière-plan.''',
+          r'''Utiliser `flatMapConcat` ou `flatMapMerge` pour une recherche : seul `flatMapLatest` annule la requête précédente quand une nouvelle saisie arrive.''',
+        ],
+        java:
+            r'''La bibliothèque standard Java n’a pas d’équivalent pratique : `java.util.concurrent.Flow` n’est qu’une interface de bas niveau. On utilise des bibliothèques comme RxJava ou Reactor.
+
+Kotlin Flow repose sur les coroutines : les opérateurs sont de simples fonctions `suspend`, et l’annulation suit automatiquement le scope.''',
+        memo: [
+          r'''`flow { emit(x) }` crée un flux froid.''',
+          r'''`map`, `filter`, `debounce`, `distinctUntilChanged` et `flatMapLatest` le transforment.''',
+          r'''`collect { }` démarre l’exécution.''',
+          r'''`StateFlow` garde la dernière valeur (l’état d’un écran) ; `SharedFlow` diffuse des événements.''',
+        ],
+        challenge:
+            r'''Crée un `flow` qui émet les nombres de 1 à 10 avec `delay(100)` entre chaque. Ne garde que les nombres pairs, transforme-les en texte et collecte-les. Ajoute ensuite `take(3)` et observe que le flux s’arrête de lui-même.''',
         icon: Icons.waves_rounded,
         level: 'Avancé',
         duration: 28,
@@ -896,6 +931,24 @@ val port = try { raw.toInt() } catch (e: NumberFormatException) { 8080 }
         code:
             'interface Producer<out T> { fun next(): T }\ninterface Consumer<in T> { fun accept(value: T) }\nfun <T> List<T>.secondOrNull(): T? = getOrNull(1)',
         practice: 'Ajoute de la variance seulement lorsqu’elle améliore l’API.',
+        mistakes: [
+          r'''Croire qu’une `MutableList<String>` est une `MutableList<Any>` : sinon, on pourrait y ajouter un `Int`. La `List` en lecture seule, elle, est covariante.''',
+          r'''Tester le type générique à l’exécution : `x is List<String>` est impossible car le paramètre de type est effacé. Une fonction `inline` avec `reified T` le permet.''',
+          r'''Mettre `out` sur un type utilisé en entrée : le compilateur refuse `fun accept(value: T)` dans une interface `Producer<out T>`.''',
+        ],
+        java:
+            r'''Java exprime la variance à chaque utilisation : `List<? extends Number>` ou `List<? super Integer>`.
+
+Kotlin permet de la déclarer une fois pour toutes sur le type, comme `interface Producer<out T>`. `out` correspond à `? extends` et `in` à `? super`. La variance à l’utilisation existe aussi : `MutableList<out Number>`.''',
+        memo: [
+          r'''`class Box<T>(val value: T)` ; `fun <T> first(list: List<T>): T`.''',
+          r'''`out T` : le type ne fait que produire des `T` (covariance).''',
+          r'''`in T` : le type ne fait que consommer des `T` (contravariance).''',
+          r'''`<T : Comparable<T>>` impose une borne supérieure.''',
+          r'''`inline fun <reified T> …` rend `T` disponible à l’exécution.''',
+        ],
+        challenge:
+            r'''Écris `fun <T : Comparable<T>> List<T>.largest(): T?` sans utiliser `maxOrNull()`, et teste-la avec des `Int` puis des `String`. Écris ensuite `inline fun <reified T> List<Any>.only(): List<T>` qui ne garde que les éléments de type `T`.''',
         icon: Icons.all_inclusive_rounded,
         level: 'Avancé',
         xp: 95,
@@ -909,6 +962,24 @@ val port = try { raw.toInt() } catch (e: NumberFormatException) { 8080 }
         code:
             'fun <T> measure(block: () -> T): T {\n    val start = System.nanoTime()\n    return block().also { println(System.nanoTime() - start) }\n}',
         practice: 'Extrais une lambda complexe dans une fonction nommée.',
+        mistakes: [
+          r'''Passer des lambdas de vingt lignes en argument : extrais-les dans une fonction nommée et passe une référence comme `::validate`.''',
+          r'''Se tromper sur `return` dans une lambda : dans une lambda `inline` comme celle de `forEach`, il quitte la fonction englobante. Utilise `return@forEach` pour ne quitter que la lambda.''',
+          r'''Appeler une fonction qui prend une lambda dans une boucle très fréquente sans `inline` : chaque appel peut allouer un objet fonction.''',
+        ],
+        java:
+            r'''Java 8 a introduit les lambdas, mais chaque type de fonction est une interface : `Function<T, R>`, `Supplier<T>`, `BiFunction`…
+
+Kotlin a de vrais types de fonction, comme `(Int) -> String` ou `() -> Unit`. Grâce à `inline`, des fonctions comme `measure` ou `forEach` n’allouent aucun objet pour la lambda.''',
+        memo: [
+          r'''Type de fonction : `(A, B) -> R`.''',
+          r'''Quand le dernier paramètre est une fonction, la lambda s’écrit après les parenthèses.''',
+          r'''`it` désigne le paramètre unique d’une lambda.''',
+          r'''Référence de fonction : `::nomFonction` ou `objet::methode`.''',
+          r'''`inline` recopie le corps de la lambda à l’endroit de l’appel.''',
+        ],
+        challenge:
+            r'''Écris `fun retry(times: Int, block: () -> Boolean): Boolean` qui réessaie le bloc jusqu’à ce qu’il renvoie `true`, au plus `times` fois. Teste-la avec une lambda qui ne réussit qu’au troisième essai, en comptant les appels dans une variable.''',
         icon: Icons.functions_rounded,
         level: 'Avancé',
         xp: 90,
@@ -923,6 +994,23 @@ val port = try { raw.toInt() } catch (e: NumberFormatException) { 8080 }
             'class Menu {\n    val items = mutableListOf<String>()\n    fun item(label: String) { items += label }\n}\nfun menu(block: Menu.() -> Unit) = Menu().apply(block)\nval main = menu { item("Accueil"); item("Profil") }',
         practice:
             'Un DSL doit réduire l’ambiguïté ; ajoute @DslMarker si nécessaire.',
+        mistakes: [
+          r'''Laisser appeler `item` depuis un sous-bloc imbriqué sans le vouloir : sans `@DslMarker`, les récepteurs extérieurs restent accessibles.''',
+          r'''Exposer l’état mutable du builder (ici `items`, public et modifiable) au lieu de produire un objet final immuable.''',
+          r'''Créer un DSL pour une configuration de trois lignes : une simple fonction avec des arguments nommés est souvent plus claire.''',
+        ],
+        java:
+            r'''Java n’a pas de lambdas avec récepteur : on écrit des builders en chaîne, comme `new Menu.Builder().item("Accueil").item("Profil").build()`.
+
+En Kotlin, avec `Menu.() -> Unit`, l’objet devient le `this` implicite du bloc. C’est ce mécanisme qu’utilisent le Gradle Kotlin DSL, Ktor ou kotlinx.html.''',
+        memo: [
+          r'''`Type.() -> Unit` : lambda avec récepteur, `this` désigne l’objet.''',
+          r'''`Type().apply(block)` crée l’objet puis exécute le bloc.''',
+          r'''`@DslMarker` empêche d’utiliser par erreur un récepteur extérieur.''',
+          r'''Un builder doit produire un résultat final immuable.''',
+        ],
+        challenge:
+            r'''Étends le DSL pour décrire des sous-menus : `menu { item("Accueil"); submenu("Réglages") { item("Thème") } }`. Ajoute une fonction qui affiche le menu avec une indentation par niveau.''',
         icon: Icons.auto_fix_high_rounded,
         level: 'Avancé',
         xp: 100,
@@ -936,6 +1024,24 @@ val port = try { raw.toInt() } catch (e: NumberFormatException) { 8080 }
         code:
             'class CheckoutService(\n    private val payments: PaymentGateway,\n    private val orders: OrderRepository,\n) {\n    fun checkout(order: Order) {\n        payments.charge(order.total)\n        orders.save(order.paid())\n    }\n}',
         practice: 'Applique les principes pour résoudre une douleur concrète.',
+        mistakes: [
+          r'''Créer une interface par classe au nom de l’inversion des dépendances : une abstraction doit répondre à un vrai besoin, comme tester ou avoir plusieurs implémentations.''',
+          r'''Transformer `CheckoutService` en fourre-tout (paiement, e-mails, export PDF…) : chaque responsabilité ajoutée est une raison de plus de le modifier.''',
+          r'''Instancier les dépendances dans la classe (`private val payments = StripeGateway()`) : impossible de la tester sans déclencher un vrai paiement.''',
+        ],
+        java:
+            r'''Les principes sont les mêmes en Java, mais Kotlin les rend moins coûteux à appliquer : injection par le constructeur principal en une ligne, interfaces fonctionnelles avec `fun interface`, délégation avec `by`.
+
+Les classes `final` par défaut obligent aussi à réfléchir avant d’ouvrir une classe à l’héritage.''',
+        memo: [
+          r'''S : une classe, une seule raison de changer.''',
+          r'''O : ajouter un comportement sans réécrire le code existant.''',
+          r'''L : une sous-classe doit pouvoir remplacer sa classe mère sans surprise.''',
+          r'''I : des interfaces petites et ciblées.''',
+          r'''D : dépendre d’abstractions, injectées par le constructeur.''',
+        ],
+        challenge:
+            r'''Écris un `FakePaymentGateway` qui enregistre les montants débités, puis un test de `CheckoutService` qui vérifie que le bon montant est débité et que la commande est sauvegardée comme payée, sans aucun vrai paiement.''',
         icon: Icons.architecture_rounded,
         level: 'Avancé',
         duration: 25,
@@ -951,6 +1057,24 @@ val port = try { raw.toInt() } catch (e: NumberFormatException) { 8080 }
             '@Test fun `applies ten percent discount`() {\n    val result = PriceCalculator().total(100.0, 0.10)\n    assertEquals(90.0, result, 0.001)\n}',
         practice:
             'Teste les comportements et cas limites, pas les détails privés.',
+        mistakes: [
+          r'''Comparer des `Double` sans tolérance avec `assertEquals(90.0, result)` : les erreurs d’arrondi font échouer le test. Passe un écart accepté, comme `0.001` ici.''',
+          r'''Tester plusieurs comportements dans un seul test : quand il échoue, on ne sait pas lequel est cassé.''',
+          r'''Rendre un test dépendant de l’heure, du réseau ou de l’ordre d’exécution : il devient instable. Injecte une horloge ou un faux dépôt.''',
+        ],
+        java:
+            r'''Les tests Kotlin utilisent les mêmes outils que Java : JUnit, MockK ou Mockito.
+
+Kotlin autorise des noms de fonctions entre accents graves, qui décrivent le comportement en langage naturel. `kotlin.test` fournit des assertions communes à toutes les plateformes, et `runTest` permet de tester du code qui utilise des coroutines.''',
+        memo: [
+          r'''Structure Arrange / Act / Assert : préparer, agir, vérifier.''',
+          r'''Un test, un comportement.''',
+          r'''Teste les cas limites : vide, zéro, négatif, maximum.''',
+          r'''Des faux objets (fakes) remplacent le réseau, la base de données et l’horloge.''',
+          r'''`runTest { }` pour tester du code `suspend`.''',
+        ],
+        challenge:
+            r'''Écris quatre tests pour `PriceCalculator.total(price, discount)` : remise nulle, remise de 100 %, remise négative (qui doit lever une exception) et prix à zéro. Fais d’abord échouer chaque test, puis corrige le code.''',
         icon: Icons.science_rounded,
         level: 'Avancé',
         xp: 100,
@@ -965,6 +1089,24 @@ val port = try { raw.toInt() } catch (e: NumberFormatException) { 8080 }
             'val result = buildList {\n    for (value in source) {\n        if (value.isValid()) add(value.transform())\n    }\n}',
         practice:
             'Profile d’abord, optimise le point chaud mesuré, puis mesure à nouveau.',
+        mistakes: [
+          r'''Optimiser sans mesurer : le temps est souvent perdu ailleurs que là où on l’imagine.''',
+          r'''Enchaîner `filter`, `map` et `take` sur une très grande collection : chaque étape crée une liste intermédiaire. `asSequence()` traite les éléments un par un.''',
+          r'''Mesurer une seule exécution avec `System.currentTimeMillis()` : la JVM n’est pas encore « chaude ». Utilise un outil de benchmark comme JMH ou kotlinx-benchmark.''',
+        ],
+        java:
+            r'''Kotlin compile vers le même bytecode JVM que Java : à code équivalent, les performances sont équivalentes.
+
+Les points à surveiller sont propres à Kotlin : lambdas non `inline`, boxing des types nullables comme `Int?`, listes intermédiaires créées par les fonctions de collection. Les séquences Kotlin jouent le rôle des streams Java.''',
+        memo: [
+          r'''Mesure, optimise le point chaud, puis mesure à nouveau.''',
+          r'''`asSequence()` évite les listes intermédiaires sur les grandes collections.''',
+          r'''`buildList { }` construit une liste en une seule passe.''',
+          r'''Un `Int?` stocké dans une collection implique du boxing.''',
+          r'''Sur Android : le Profiler d’Android Studio et Macrobenchmark.''',
+        ],
+        challenge:
+            r'''Crée une liste d’un million d’entiers et compare `filter { … }.map { … }.take(10)` avec la même chaîne précédée de `asSequence()`. Mesure chaque version plusieurs fois avec `measureTimeMillis` et explique la différence.''',
         icon: Icons.speed_rounded,
         level: 'Avancé',
         xp: 105,
