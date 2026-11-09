@@ -89,11 +89,11 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "dev.kotlinlab" "\0"
+            VALUE "CompanyName", "Stephane Gaillet" "\0"
             VALUE "FileDescription", "kotlin_lab" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "kotlin_lab" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 dev.kotlinlab. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 Stephane Gaillet. All rights reserved." "\0"
             VALUE "OriginalFilename", "kotlin_lab.exe" "\0"
             VALUE "ProductName", "kotlin_lab" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"

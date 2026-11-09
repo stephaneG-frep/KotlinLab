@@ -1,4 +1,4 @@
-package dev.kotlinlab.kotlin_lab
+package io.github.stephaneg.kotlinlab
 
 import io.flutter.embedding.android.FlutterActivity
 

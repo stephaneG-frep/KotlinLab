@@ -8,7 +8,7 @@
 PRODUCT_NAME = kotlin_lab
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = dev.kotlinlab.kotlinLab
+PRODUCT_BUNDLE_IDENTIFIER = io.github.stephaneg.kotlinlab
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 dev.kotlinlab. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 Stephane Gaillet. All rights reserved.
